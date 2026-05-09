@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { getSupabase, getClientIp, applyCors } from './_lib.js';
+import { getSupabase, getClientIp, applyCors, getActiveQuizId } from './_lib.js';
 
 const RATE_WINDOW_MINUTES = 5;
 const RATE_MAX_FAILURES = 10;
@@ -32,7 +32,11 @@ export default async function handler(req, res) {
       }
     }
 
-    if (typeof password !== 'string' || password !== process.env.QUIZ_PASSWORD) {
+    const quizId = await getActiveQuizId(supabase);
+    const { data: quiz } = await supabase.from('quizzes').select('password').eq('id', quizId).single();
+    const expectedPassword = quiz?.password ?? process.env.QUIZ_PASSWORD;
+
+    if (typeof password !== 'string' || password !== expectedPassword) {
       await supabase.from('audit_log').insert({
         event_type: 'password_attempt_failed',
         ip_address: ip,

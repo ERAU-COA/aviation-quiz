@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Instructor Portal — Aviation Quiz</title>
+    <script src="https://cdn.jsdelivr.net/gh/davidshimjs/qrcodejs@gh-pages/qrcode.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+        .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
+        h1 { color: #f1f5f9; margin-bottom: 8px; }
+        h2 { color: #cbd5e1; margin-bottom: 16px; font-size: 18px; }
+        .muted { color: #94a3b8; font-size: 14px; }
+        .login-box { max-width: 400px; margin: 80px auto; background: #1e293b; padding: 32px; border-radius: 12px; border: 1px solid #334155; }
+        input, textarea, select { width: 100%; padding: 10px 12px; background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 6px; font-size: 14px; font-family: inherit; }
+        input:focus, textarea:focus, select:focus { outline: none; border-color: #6366f1; }
+        textarea { resize: vertical; min-height: 60px; }
+        button { padding: 10px 16px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; }
+        button:hover { background: #4f46e5; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button.secondary { background: #334155; }
+        button.secondary:hover { background: #475569; }
+        button.danger { background: #dc2626; }
+        button.danger:hover { background: #b91c1c; }
+        .tabs { display: flex; gap: 4px; border-bottom: 1px solid #334155; margin-bottom: 24px; flex-wrap: wrap; }
+        .tab { padding: 10px 16px; background: transparent; color: #94a3b8; border: none; border-bottom: 2px solid transparent; border-radius: 0; cursor: pointer; font-weight: 500; }
+        .tab.active { color: #f1f5f9; border-bottom-color: #6366f1; }
+        .tab:hover { color: #e2e8f0; background: transparent; }
+        .panel { display: none; }
+        .panel.active { display: block; }
+        .card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 16px; }
+        .row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+        .row label { min-width: 120px; color: #94a3b8; font-size: 13px; }
+        .field { margin-bottom: 12px; }
+        .field label { display: block; color: #94a3b8; font-size: 13px; margin-bottom: 4px; }
+        .qr-box { background: white; padding: 24px; border-radius: 8px; display: inline-block; }
+        .pwd-display { font-family: ui-monospace, "SF Mono", monospace; font-size: 32px; letter-spacing: 4px; color: #fbbf24; padding: 16px 24px; background: #0f172a; border: 1px dashed #334155; border-radius: 8px; display: inline-block; }
+        .question-card { background: #1e293b; padding: 16px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #334155; }
+        .question-card .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; font-size: 13px; }
+        .question-card .opt { padding: 6px 10px; background: #0f172a; border-radius: 4px; border: 1px solid #334155; }
+        .question-card .opt.correct { border-color: #10b981; background: rgba(16, 185, 129, 0.08); }
+        .submission-row { background: #1e293b; padding: 12px 16px; border-radius: 6px; margin-bottom: 8px; border: 1px solid #334155; cursor: pointer; }
+        .submission-row:hover { border-color: #6366f1; }
+        .submission-row .meta { display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 12px; align-items: center; }
+        .submission-detail { background: #0f172a; padding: 12px 16px; margin-top: 8px; border-radius: 6px; font-size: 13px; }
+        .answer-row { padding: 8px 0; border-bottom: 1px solid #1e293b; }
+        .answer-row:last-child { border-bottom: none; }
+        .badge { display: inline-block; padding: 2px 8px; font-size: 11px; border-radius: 4px; font-weight: 600; }
+        .badge.correct { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
+        .badge.incorrect { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+        .stat-card { background: #1e293b; padding: 14px 16px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 12px; }
+        .stat-card .qtext { font-weight: 500; margin-bottom: 8px; }
+        .bar-container { display: grid; grid-template-columns: 24px 1fr 60px; gap: 8px; align-items: center; margin: 4px 0; font-size: 13px; }
+        .bar-bg { background: #0f172a; height: 22px; border-radius: 4px; overflow: hidden; }
+        .bar-fill { height: 100%; transition: width 0.3s; display: flex; align-items: center; padding-left: 6px; color: white; font-size: 11px; font-weight: 600; }
+        .bar-correct { background: #10b981; }
+        .bar-other { background: #475569; }
+        .summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+        .summary .item { background: #1e293b; padding: 16px; border-radius: 8px; border: 1px solid #334155; }
+        .summary .label { color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .summary .value { font-size: 28px; font-weight: 700; color: #f1f5f9; margin-top: 4px; }
+        .error { color: #fca5a5; font-size: 13px; margin-top: 8px; min-height: 18px; }
+        .success { color: #6ee7b7; font-size: 13px; margin-top: 8px; }
+        .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+        .url-input { width: 100%; max-width: 600px; }
+    </style>
+</head>
+<body>
+    <div class="wrap">
+        <div id="loginScreen" class="login-box">
+            <h1>Instructor Portal</h1>
+            <p class="muted" style="margin-bottom: 24px;">Enter your access code.</p>
+            <div class="field">
+                <input type="password" id="codeInput" placeholder="Access code" autocomplete="off">
+            </div>
+            <button id="loginBtn" style="width: 100%;">Sign in</button>
+            <div class="error" id="loginError"></div>
+        </div>
+
+        <div id="portal" style="display: none;">
+            <div class="header-row">
+                <h1>Instructor Portal</h1>
+                <button class="secondary" id="logoutBtn">Sign out</button>
+            </div>
+
+            <div class="tabs">
+                <button class="tab active" data-tab="qr">QR Code</button>
+                <button class="tab" data-tab="passcode">Passcode</button>
+                <button class="tab" data-tab="questions">Questions</button>
+                <button class="tab" data-tab="submissions">Submissions</button>
+                <button class="tab" data-tab="stats">Class Performance</button>
+            </div>
+
+            <div class="panel active" id="panel-qr">
+                <div class="card">
+                    <h2>Quiz URL</h2>
+                    <div class="field">
+                        <label for="quizUrl">Students will scan this QR code to reach the quiz:</label>
+                        <input type="url" id="quizUrl" class="url-input" value="https://erau-coa.github.io/aviation-quiz/">
+                    </div>
+                    <button id="regenQrBtn">Update QR</button>
+                </div>
+                <div class="card" style="text-align: center;">
+                    <div class="qr-box" id="qrBox"></div>
+                    <p class="muted" style="margin-top: 12px;" id="qrUrlText"></p>
+                </div>
+            </div>
+
+            <div class="panel" id="panel-passcode">
+                <div class="card">
+                    <h2>Current Passcode</h2>
+                    <p class="muted" style="margin-bottom: 16px;">Show this to your students. They will type this on the quiz page.</p>
+                    <div class="pwd-display" id="pwdDisplay">------</div>
+                    <div style="margin-top: 20px;">
+                        <h2 style="margin-top: 24px;">Change Passcode</h2>
+                        <div class="row">
+                            <input type="text" id="newPwdInput" placeholder="New passcode" style="max-width: 280px;">
+                            <button id="savePwdBtn">Save</button>
+                        </div>
+                        <div class="error" id="pwdError"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel" id="panel-questions">
+                <div class="header-row">
+                    <h2>Questions</h2>
+                    <button id="addQuestionBtn">+ Add Question</button>
+                </div>
+                <div id="questionEditor"></div>
+                <div id="questionList"></div>
+            </div>
+
+            <div class="panel" id="panel-submissions">
+                <div class="header-row">
+                    <h2>Submissions</h2>
+                    <button class="secondary" id="refreshSubsBtn">Refresh</button>
+                </div>
+                <div id="submissionsList"></div>
+            </div>
+
+            <div class="panel" id="panel-stats">
+                <div class="header-row">
+                    <h2>Class Performance</h2>
+                    <button class="secondary" id="refreshStatsBtn">Refresh</button>
+                </div>
+                <div id="statsBody"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE_URL = window.API_BASE_URL_OVERRIDE || 'https://aviation-quiz-peach.vercel.app';
+        const TOKEN_KEY = 'aviationQuiz.instructorToken';
+
+        const $ = id => document.getElementById(id);
+        let token = sessionStorage.getItem(TOKEN_KEY) || null;
+        let questionsCache = [];
+        let editingQuestionId = null;
+
+        async function api(path, opts = {}) {
+            const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
+            if (token) headers.Authorization = `Bearer ${token}`;
+            const r = await fetch(`${API_BASE_URL}${path}`, Object.assign({}, opts, { headers }));
+            if (r.status === 401 || r.status === 403) {
+                sessionStorage.removeItem(TOKEN_KEY);
+                token = null;
+                showLogin();
+                throw new Error('Session expired');
+            }
+            const data = await r.json().catch(() => ({}));
+            if (!r.ok) throw new Error(data.error || data.message || `HTTP ${r.status}`);
+            return data;
+        }
+
+        function showLogin() {
+            $('loginScreen').style.display = 'block';
+            $('portal').style.display = 'none';
+        }
+        function showPortal() {
+            $('loginScreen').style.display = 'none';
+            $('portal').style.display = 'block';
+            switchTab('qr');
+            loadQuiz();
+        }
+
+        async function login() {
+            const code = $('codeInput').value;
+            $('loginError').textContent = '';
+            $('loginBtn').disabled = true;
+            try {
+                const r = await fetch(`${API_BASE_URL}/api/instructor-login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                const data = await r.json();
+                if (!r.ok || !data.valid) {
+                    $('loginError').textContent = data.error || 'Wrong code';
+                    return;
+                }
+                token = data.token;
+                sessionStorage.setItem(TOKEN_KEY, token);
+                showPortal();
+            } catch (e) {
+                $('loginError').textContent = 'Network error';
+            } finally {
+                $('loginBtn').disabled = false;
+            }
+        }
+
+        function logout() {
+            sessionStorage.removeItem(TOKEN_KEY);
+            token = null;
+            $('codeInput').value = '';
+            showLogin();
+        }
+
+        function switchTab(name) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+            document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === `panel-${name}`));
+            if (name === 'qr') drawQR();
+            if (name === 'questions') loadQuestions();
+            if (name === 'submissions') loadSubmissions();
+            if (name === 'stats') loadStats();
+        }
+
+        function drawQR() {
+            const url = $('quizUrl').value.trim();
+            $('qrBox').innerHTML = '';
+            $('qrUrlText').textContent = url;
+            if (!url) return;
+            new QRCode($('qrBox'), { text: url, width: 280, height: 280, correctLevel: QRCode.CorrectLevel.M });
+        }
+
+        async function loadQuiz() {
+            try {
+                const data = await api('/api/instructor?action=quiz');
+                $('pwdDisplay').textContent = data.quiz?.password || '(not set)';
+            } catch (e) {
+                $('pwdDisplay').textContent = '(failed to load)';
+            }
+        }
+
+        async function savePassword() {
+            const v = $('newPwdInput').value.trim();
+            $('pwdError').textContent = '';
+            if (!v) { $('pwdError').textContent = 'Enter a passcode'; return; }
+            try {
+                await api('/api/instructor?action=quiz', {
+                    method: 'PUT',
+                    body: JSON.stringify({ password: v })
+                });
+                $('newPwdInput').value = '';
+                await loadQuiz();
+                $('pwdError').textContent = '';
+                $('pwdError').style.color = '#6ee7b7';
+                $('pwdError').textContent = 'Saved.';
+                setTimeout(() => { $('pwdError').textContent = ''; $('pwdError').style.color = ''; }, 2000);
+            } catch (e) {
+                $('pwdError').textContent = e.message;
+            }
+        }
+
+        async function loadQuestions() {
+            try {
+                const data = await api('/api/instructor?action=questions');
+                questionsCache = data.questions || [];
+                renderQuestions();
+            } catch (e) {
+                $('questionList').innerHTML = `<p class="error">${e.message}</p>`;
+            }
+        }
+
+        function renderQuestions() {
+            const list = $('questionList');
+            list.innerHTML = '';
+            questionsCache.forEach(q => {
+                const el = document.createElement('div');
+                el.className = 'question-card';
+                el.innerHTML = `
+                    <div style="display: flex; justify-content: space-between; gap: 12px; align-items: start;">
+                        <div style="flex: 1;">
+                            <strong>Q${q.question_number}.</strong> <span class="qtext"></span>
+                        </div>
+                        <div class="actions">
+                            <button class="secondary edit">Edit</button>
+                            <button class="danger del">Delete</button>
+                        </div>
+                    </div>
+                    <div class="opts">
+                        <div class="opt ${q.correct_answer === 'A' ? 'correct' : ''}"><strong>A.</strong> <span class="oa"></span></div>
+                        <div class="opt ${q.correct_answer === 'B' ? 'correct' : ''}"><strong>B.</strong> <span class="ob"></span></div>
+                        <div class="opt ${q.correct_answer === 'C' ? 'correct' : ''}"><strong>C.</strong> <span class="oc"></span></div>
+                        <div class="opt ${q.correct_answer === 'D' ? 'correct' : ''}"><strong>D.</strong> <span class="od"></span></div>
+                    </div>
+                    <p class="muted">Correct answer: ${q.correct_answer}</p>
+                `;
+                el.querySelector('.qtext').textContent = q.question_text;
+                el.querySelector('.oa').textContent = q.option_a;
+                el.querySelector('.ob').textContent = q.option_b;
+                el.querySelector('.oc').textContent = q.option_c;
+                el.querySelector('.od').textContent = q.option_d;
+                el.querySelector('.edit').onclick = () => openQuestionEditor(q);
+                el.querySelector('.del').onclick = () => deleteQuestion(q.id);
+                list.appendChild(el);
+            });
+        }
+
+        function openQuestionEditor(q) {
+            editingQuestionId = q?.id || null;
+            const editor = $('questionEditor');
+            editor.innerHTML = `
+                <div class="card">
+                    <h2>${q ? 'Edit' : 'Add'} Question</h2>
+                    <div class="field">
+                        <label>Question text</label>
+                        <textarea id="qe-text"></textarea>
+                    </div>
+                    <div class="field"><label>Option A</label><input id="qe-a"></div>
+                    <div class="field"><label>Option B</label><input id="qe-b"></div>
+                    <div class="field"><label>Option C</label><input id="qe-c"></div>
+                    <div class="field"><label>Option D</label><input id="qe-d"></div>
+                    <div class="field">
+                        <label>Correct answer</label>
+                        <select id="qe-correct">
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                            <option value="D">D</option>
+                        </select>
+                    </div>
+                    <div class="actions">
+                        <button id="qe-save">Save</button>
+                        <button class="secondary" id="qe-cancel">Cancel</button>
+                    </div>
+                    <div class="error" id="qe-err"></div>
+                </div>
+            `;
+            $('qe-text').value = q?.question_text || '';
+            $('qe-a').value = q?.option_a || '';
+            $('qe-b').value = q?.option_b || '';
+            $('qe-c').value = q?.option_c || '';
+            $('qe-d').value = q?.option_d || '';
+            $('qe-correct').value = q?.correct_answer || 'A';
+            $('qe-save').onclick = saveQuestion;
+            $('qe-cancel').onclick = () => { editor.innerHTML = ''; editingQuestionId = null; };
+        }
+
+        async function saveQuestion() {
+            const body = {
+                question_text: $('qe-text').value.trim(),
+                option_a: $('qe-a').value.trim(),
+                option_b: $('qe-b').value.trim(),
+                option_c: $('qe-c').value.trim(),
+                option_d: $('qe-d').value.trim(),
+                correct_answer: $('qe-correct').value
+            };
+            if (!body.question_text || !body.option_a || !body.option_b || !body.option_c || !body.option_d) {
+                $('qe-err').textContent = 'All fields required';
+                return;
+            }
+            try {
+                if (editingQuestionId) {
+                    await api(`/api/instructor?action=questions&id=${editingQuestionId}`, {
+                        method: 'PUT', body: JSON.stringify(body)
+                    });
+                } else {
+                    await api('/api/instructor?action=questions', {
+                        method: 'POST', body: JSON.stringify(body)
+                    });
+                }
+                $('questionEditor').innerHTML = '';
+                editingQuestionId = null;
+                await loadQuestions();
+            } catch (e) {
+                $('qe-err').textContent = e.message;
+            }
+        }
+
+        async function deleteQuestion(id) {
+            if (!confirm('Delete this question? This cannot be undone.')) return;
+            try {
+                await api(`/api/instructor?action=questions&id=${id}`, { method: 'DELETE' });
+                await loadQuestions();
+            } catch (e) {
+                alert('Failed: ' + e.message);
+            }
+        }
+
+        async function loadSubmissions() {
+            const list = $('submissionsList');
+            list.innerHTML = '<p class="muted">Loading...</p>';
+            try {
+                const data = await api('/api/instructor?action=submissions');
+                if (!data.submissions?.length) { list.innerHTML = '<p class="muted">No submissions yet.</p>'; return; }
+                list.innerHTML = '';
+                data.submissions.forEach(s => {
+                    const row = document.createElement('div');
+                    row.className = 'submission-row';
+                    const date = new Date(s.submitted_at).toLocaleString();
+                    const time = s.time_taken_seconds ? `${Math.floor(s.time_taken_seconds/60)}m ${s.time_taken_seconds%60}s` : '—';
+                    row.innerHTML = `
+                        <div class="meta">
+                            <strong class="sname"></strong>
+                            <span>Score: ${s.score}/${s.total_questions}</span>
+                            <span class="muted">${time}</span>
+                            <span class="muted">${date}</span>
+                            <button class="danger small">Delete</button>
+                        </div>
+                        <div class="submission-detail" style="display: none;"></div>
+                    `;
+                    row.querySelector('.sname').textContent = s.student_name;
+                    const detail = row.querySelector('.submission-detail');
+                    row.onclick = (e) => {
+                        if (e.target.classList.contains('danger')) return;
+                        if (detail.style.display === 'none') {
+                            renderSubmissionDetail(detail, s);
+                            detail.style.display = 'block';
+                        } else {
+                            detail.style.display = 'none';
+                        }
+                    };
+                    row.querySelector('.danger').onclick = async (e) => {
+                        e.stopPropagation();
+                        if (!confirm(`Delete ${s.student_name}'s submission? They will be able to retake.`)) return;
+                        try {
+                            await api(`/api/instructor?action=submissions&id=${s.id}`, { method: 'DELETE' });
+                            await loadSubmissions();
+                        } catch (err) { alert('Failed: ' + err.message); }
+                    };
+                    list.appendChild(row);
+                });
+            } catch (e) {
+                list.innerHTML = `<p class="error">${e.message}</p>`;
+            }
+        }
+
+        function renderSubmissionDetail(el, s) {
+            const qById = Object.fromEntries(questionsCache.map(q => [q.id, q]));
+            let html = `<p class="muted" style="margin-bottom: 8px;">IP: ${s.ip_address || '—'} • Device: ${s.device_type || '—'}</p>`;
+            (s.answers || []).forEach((a, i) => {
+                const q = qById[a.question_id];
+                html += `<div class="answer-row">
+                    <strong>Q${i+1}:</strong> ${q ? escapeHtml(q.question_text) : '(question deleted)'}<br>
+                    <span class="muted">Their answer: ${a.student_answer || '(none)'} ${q ? '— ' + escapeHtml(q['option_' + (a.student_answer || '').toLowerCase()] || '') : ''}</span>
+                    <span class="badge ${a.is_correct ? 'correct' : 'incorrect'}">${a.is_correct ? 'Correct' : 'Wrong'}</span>
+                </div>`;
+            });
+            el.innerHTML = html;
+        }
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
+        }
+
+        async function loadStats() {
+            const body = $('statsBody');
+            body.innerHTML = '<p class="muted">Loading...</p>';
+            try {
+                if (!questionsCache.length) await loadQuestions();
+                const data = await api('/api/instructor?action=stats');
+                let html = `
+                    <div class="summary">
+                        <div class="item"><div class="label">Total Submissions</div><div class="value">${data.totalSubmissions}</div></div>
+                        <div class="item"><div class="label">Avg Score</div><div class="value">${data.averageScore} / ${data.totalQuestions}</div></div>
+                        <div class="item"><div class="label">Questions</div><div class="value">${data.totalQuestions}</div></div>
+                    </div>
+                `;
+                data.perQuestion.forEach(q => {
+                    html += `<div class="stat-card">
+                        <div class="qtext">Q${q.number}: ${escapeHtml(q.text)}</div>
+                        <p class="muted" style="margin-bottom: 8px; font-size: 12px;">Correct: ${q.correctAnswer} • ${q.correct}/${q.total} got it right (${q.percent}%)</p>`;
+                    ['A','B','C','D'].forEach(letter => {
+                        const c = q.choiceCounts[letter] || 0;
+                        const pct = q.total ? (c / q.total) * 100 : 0;
+                        const isCorrect = letter === q.correctAnswer;
+                        html += `<div class="bar-container">
+                            <span>${letter}</span>
+                            <div class="bar-bg"><div class="bar-fill ${isCorrect ? 'bar-correct' : 'bar-other'}" style="width: ${pct}%;">${pct > 8 ? Math.round(pct) + '%' : ''}</div></div>
+                            <span class="muted">${c}/${q.total}</span>
+                        </div>`;
+                    });
+                    html += '</div>';
+                });
+                body.innerHTML = html;
+            } catch (e) {
+                body.innerHTML = `<p class="error">${e.message}</p>`;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            $('loginBtn').onclick = login;
+            $('codeInput').addEventListener('keydown', e => { if (e.key === 'Enter') login(); });
+            $('logoutBtn').onclick = logout;
+            $('regenQrBtn').onclick = drawQR;
+            $('savePwdBtn').onclick = savePassword;
+            $('addQuestionBtn').onclick = () => openQuestionEditor(null);
+            $('refreshSubsBtn').onclick = loadSubmissions;
+            $('refreshStatsBtn').onclick = loadStats;
+            document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchTab(t.dataset.tab));
+
+            if (token) showPortal();
+            else showLogin();
+        });
+    </script>
+</body>
+</html>
