@@ -83,12 +83,16 @@
         <!-- QUIZ SCREEN -->
         <div class="screen" id="quizScreen">
             <div class="quiz-header">
-                <div>Quiz</div>
+                <div id="questionCount">1/5</div>
                 <div class="timer" id="timer">5:00</div>
             </div>
             <div class="question-text" id="questionText"></div>
             <div class="options" id="optionsContainer"></div>
-            <button class="submit-btn" onclick="submitQuiz()">Submit Quiz</button>
+            <div style="display: flex; gap: 15px; margin-top: 20px;">
+                <button class="submit-btn" id="prevBtn" onclick="previousQuestion()" style="grid-column: auto; width: 48%; background: #8b5cf6;">← Back</button>
+                <button class="submit-btn" id="nextBtn" onclick="nextQuestion()" style="grid-column: auto; width: 48%; background: #7c3aed;">Next →</button>
+            </div>
+            <button class="submit-btn" id="submitBtn" onclick="submitQuiz()" style="display: none; margin-top: 10px;">Submit Quiz</button>
         </div>
 
         <!-- RESULTS SCREEN -->
@@ -211,7 +215,11 @@
         }
 
         function showQuestion() {
+            if (currentQ >= questions.length) currentQ = questions.length - 1;
+            if (currentQ < 0) currentQ = 0;
+
             const q = questions[currentQ];
+            document.getElementById('questionCount').textContent = `${currentQ + 1}/${questions.length}`;
             document.getElementById('questionText').textContent = `Q${currentQ + 1}: ${q.question_text}`;
 
             let html = '';
@@ -224,10 +232,25 @@
                 </div>`;
             });
             document.getElementById('optionsContainer').innerHTML = html;
+
+            // Update button visibility
+            document.getElementById('prevBtn').style.display = currentQ === 0 ? 'none' : 'block';
+            document.getElementById('nextBtn').style.display = currentQ === questions.length - 1 ? 'none' : 'block';
+            document.getElementById('submitBtn').style.display = currentQ === questions.length - 1 ? 'block' : 'none';
         }
 
         function selectAnswer(qId, letter) {
             answers[qId] = letter;
+            showQuestion();
+        }
+
+        function nextQuestion() {
+            currentQ++;
+            showQuestion();
+        }
+
+        function previousQuestion() {
+            currentQ--;
             showQuestion();
         }
 
