@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { getSupabase, getClientIp, applyCors, getActiveQuizId } from './_lib.js';
+import { getSupabase, getClientIp, applyCors } from './_lib.js';
 
 const MAX_NAME_LENGTH = 120;
 
@@ -18,21 +18,24 @@ export default async function handler(req, res) {
     ? browserFingerprint
     : null;
 
+  let decoded;
   try {
-    jwt.verify(sessionToken, process.env.JWT_SECRET);
+    decoded = jwt.verify(sessionToken, process.env.JWT_SECRET);
   } catch {
     return res.status(401).json({ error: 'Invalid or expired session' });
   }
+  const quizId = decoded?.quizId;
+  if (!quizId) return res.status(401).json({ error: 'Token missing quizId' });
 
   const supabase = getSupabase();
   const ip = getClientIp(req);
   const userAgent = req.headers['user-agent'] || null;
-
   const cleanName = String(studentName).trim().slice(0, MAX_NAME_LENGTH);
 
   const { count: deviceMatch, error: dupeErr } = await supabase
     .from('submissions')
     .select('id', { count: 'exact', head: true })
+    .eq('quiz_id', quizId)
     .eq('device_id', deviceId);
   if (dupeErr) {
     console.error('duplicate check error:', dupeErr);
@@ -46,17 +49,18 @@ export default async function handler(req, res) {
     const { count: fpNameMatch } = await supabase
       .from('submissions')
       .select('id', { count: 'exact', head: true })
+      .eq('quiz_id', quizId)
       .eq('browser_fingerprint', cleanFingerprint)
       .ilike('student_name', cleanName);
     if ((fpNameMatch ?? 0) > 0) {
       return res.status(409).json({ error: 'already_submitted', message: 'A submission for this name has already been recorded from this browser.' });
     }
   }
+
   const cleanDevice = typeof deviceType === 'string' ? deviceType.slice(0, 20) : 'unknown';
   const cleanTime = Number.isFinite(Number(timeTaken)) ? Math.max(0, Math.floor(Number(timeTaken))) : 0;
 
   try {
-    const quizId = await getActiveQuizId(supabase);
     const { data: questions, error: qErr } = await supabase
       .from('questions')
       .select('id, correct_answer')
@@ -106,6 +110,7 @@ export default async function handler(req, res) {
       event_type: 'quiz_submitted',
       ip_address: ip,
       event_data: {
+        quiz_id: quizId,
         score,
         total_questions: questions.length,
         percentage: Math.round((score / questions.length) * 100),

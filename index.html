@@ -65,6 +65,7 @@
 
         <div class="screen" id="waitingRoomScreen">
             <h1>&#9992;&#65039; Waiting Room</h1>
+            <p style="text-align: center; font-weight: 600; color: #1e40af; margin-bottom: 8px;" id="waitingQuizTitle"></p>
             <p style="margin-bottom: 20px;">You're checked in. The quiz will start when your instructor begins.</p>
             <div style="text-align: center; margin: 30px 0;">
                 <div style="display: inline-block; width: 60px; height: 60px; border: 4px solid #e0e7ff; border-top-color: #1e40af; border-radius: 50%; animation: spin 1s linear infinite;"></div>
@@ -114,6 +115,7 @@
         </div>
 
         <div class="screen" id="quizScreen">
+            <div id="quizTitleBanner" style="font-size: 13px; color: #1e40af; font-weight: 600; margin-bottom: 8px;"></div>
             <div class="quiz-header">
                 <div id="questionCount">1/5</div>
                 <div class="timer" id="timer">5:00</div>
@@ -250,7 +252,9 @@
             quizStatus: 'inactive',
             statusPoll: null,
             timerEnabled: true,
-            timeLimitSeconds: DEFAULT_QUIZ_TIME_SECONDS
+            timeLimitSeconds: DEFAULT_QUIZ_TIME_SECONDS,
+            quizId: null,
+            quizTitle: ''
         };
 
         computeBrowserFingerprint().then(fp => { state.browserFingerprint = fp; }).catch(() => {});
@@ -306,6 +310,7 @@
                 const data = await r.json();
                 if (r.ok && data.valid) {
                     state.sessionToken = data.sessionToken;
+                    state.quizTitle = data.quizTitle || state.quizTitle;
                     showScreen('nameScreen');
                     $('studentName').focus();
                 } else if (r.status === 429) {
@@ -335,6 +340,7 @@
                     const status = await joinWaitingRoom(name);
                     state.quizStatus = status;
                     document.getElementById('waitingStudentName').textContent = `Checked in as: ${name}`;
+                    document.getElementById('waitingQuizTitle').textContent = state.quizTitle || '';
                     if (status === 'active') {
                         await loadQuestionsAndStart();
                     } else {
@@ -351,8 +357,10 @@
                     state.questions.forEach(q => { state.answers[q.id] = null; });
                     state.timerEnabled = data.timerEnabled !== false;
                     state.timeLimitSeconds = data.timeLimitSeconds || DEFAULT_QUIZ_TIME_SECONDS;
+                    state.quizTitle = data.quizTitle || state.quizTitle;
                     state.currentQ = 0;
                     state.startTime = Date.now();
+                    document.getElementById('quizTitleBanner').textContent = state.quizTitle || '';
                     showScreen('quizScreen');
                     renderQuestion();
                     startTimer();
@@ -482,6 +490,8 @@
                 const data = await fetchQuizStatus();
                 state.mode = data.mode || 'password';
                 state.quizStatus = data.status || 'inactive';
+                state.quizId = data.quizId || null;
+                state.quizTitle = data.quizTitle || '';
                 if (data.alreadySubmitted) {
                     try { localStorage.setItem(SUBMITTED_FLAG, '1'); } catch (e) {}
                     showScreen('alreadySubmittedScreen');
@@ -526,6 +536,7 @@
                 throw new Error(data.message || data.error || 'Could not join waiting room');
             }
             state.sessionToken = data.sessionToken;
+            state.quizTitle = data.quizTitle || state.quizTitle;
             return data.status;
         }
 
@@ -534,6 +545,12 @@
             state.statusPoll = setInterval(async () => {
                 try {
                     const data = await fetchQuizStatus();
+                    if (state.quizId && data.quizId && data.quizId !== state.quizId) {
+                        stopQuizStatusPolling();
+                        document.getElementById('sessionClosedMessage').textContent = 'The instructor switched to a different quiz. Refresh the page to rejoin.';
+                        showScreen('sessionClosedScreen');
+                        return;
+                    }
                     state.quizStatus = data.status;
                     if (data.status === 'active') {
                         stopQuizStatusPolling();
@@ -542,9 +559,9 @@
                         stopQuizStatusPolling();
                         document.getElementById('sessionClosedMessage').textContent = 'The quiz session has ended.';
                         showScreen('sessionClosedScreen');
-                    } else if (data.status === 'inactive') {
+                    } else if (data.status === 'inactive' || data.mode !== 'sync') {
                         stopQuizStatusPolling();
-                        document.getElementById('sessionClosedMessage').textContent = 'The instructor reset the session.';
+                        document.getElementById('sessionClosedMessage').textContent = 'The instructor closed the session.';
                         showScreen('sessionClosedScreen');
                     }
                 } catch (e) {}
@@ -566,8 +583,10 @@
                 state.questions.forEach(q => { state.answers[q.id] = null; });
                 state.timerEnabled = data.timerEnabled !== false;
                 state.timeLimitSeconds = data.timeLimitSeconds || DEFAULT_QUIZ_TIME_SECONDS;
+                state.quizTitle = data.quizTitle || state.quizTitle;
                 state.currentQ = 0;
                 state.startTime = Date.now();
+                document.getElementById('quizTitleBanner').textContent = state.quizTitle || '';
                 showScreen('quizScreen');
                 renderQuestion();
                 startTimer();

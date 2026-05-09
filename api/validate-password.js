@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { getSupabase, getClientIp, applyCors, getActiveQuizId } from './_lib.js';
+import { getSupabase, getClientIp, applyCors, findQuizByPassword } from './_lib.js';
 
 const RATE_WINDOW_MINUTES = 5;
 const RATE_MAX_FAILURES = 10;
@@ -32,14 +32,8 @@ export default async function handler(req, res) {
       }
     }
 
-    const quizId = await getActiveQuizId(supabase);
-    const { data: quiz } = await supabase.from('quizzes').select('password, mode').eq('id', quizId).single();
-    if (quiz?.mode === 'sync') {
-      return res.status(400).json({ valid: false, error: 'Quiz is in synchronous mode. Please wait for instructor.' });
-    }
-    const expectedPassword = quiz?.password ?? process.env.QUIZ_PASSWORD;
-
-    if (typeof password !== 'string' || password !== expectedPassword) {
+    const quiz = await findQuizByPassword(supabase, password);
+    if (!quiz) {
       await supabase.from('audit_log').insert({
         event_type: 'password_attempt_failed',
         ip_address: ip,
@@ -48,13 +42,18 @@ export default async function handler(req, res) {
       return res.status(401).json({ valid: false });
     }
 
-    const token = jwt.sign({ ip }, process.env.JWT_SECRET, { expiresIn: '6h' });
+    if (quiz.mode === 'sync') {
+      return res.status(400).json({ valid: false, error: 'This quiz is in synchronous mode. Wait for instructor to begin.' });
+    }
+
+    const token = jwt.sign({ ip, quizId: quiz.id }, process.env.JWT_SECRET, { expiresIn: '6h' });
     await supabase.from('audit_log').insert({
       event_type: 'password_validated',
-      ip_address: ip
+      ip_address: ip,
+      event_data: { quiz_id: quiz.id }
     });
 
-    return res.status(200).json({ valid: true, sessionToken: token });
+    return res.status(200).json({ valid: true, sessionToken: token, quizTitle: quiz.title });
   } catch (e) {
     console.error('validate-password error:', e);
     return res.status(500).json({ error: 'Internal server error' });

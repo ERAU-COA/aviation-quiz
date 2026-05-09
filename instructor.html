@@ -11,18 +11,20 @@
         .wrap { max-width: 1100px; margin: 0 auto; padding: 24px; }
         h1 { color: #f1f5f9; margin-bottom: 8px; }
         h2 { color: #cbd5e1; margin-bottom: 16px; font-size: 18px; }
+        h3 { color: #cbd5e1; margin-bottom: 12px; font-size: 15px; font-weight: 600; }
         .muted { color: #94a3b8; font-size: 14px; }
         .login-box { max-width: 400px; margin: 80px auto; background: #1e293b; padding: 32px; border-radius: 12px; border: 1px solid #334155; }
-        input, textarea, select { width: 100%; padding: 10px 12px; background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 6px; font-size: 14px; font-family: inherit; }
+        input, textarea, select { width: 100%; padding: 9px 12px; background: #0f172a; color: #e2e8f0; border: 1px solid #334155; border-radius: 6px; font-size: 14px; font-family: inherit; }
         input:focus, textarea:focus, select:focus { outline: none; border-color: #6366f1; }
         textarea { resize: vertical; min-height: 60px; }
-        button { padding: 10px 16px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 14px; }
+        button { padding: 9px 14px; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; }
         button:hover { background: #4f46e5; }
         button:disabled { opacity: 0.5; cursor: not-allowed; }
         button.secondary { background: #334155; }
         button.secondary:hover { background: #475569; }
         button.danger { background: #dc2626; }
         button.danger:hover { background: #b91c1c; }
+        button.icon { padding: 6px 10px; font-size: 16px; }
         .tabs { display: flex; gap: 4px; border-bottom: 1px solid #334155; margin-bottom: 24px; flex-wrap: wrap; }
         .tab { padding: 10px 16px; background: transparent; color: #94a3b8; border: none; border-bottom: 2px solid transparent; border-radius: 0; cursor: pointer; font-weight: 500; }
         .tab.active { color: #f1f5f9; border-bottom-color: #6366f1; }
@@ -30,12 +32,12 @@
         .panel { display: none; }
         .panel.active { display: block; }
         .card { background: #1e293b; padding: 20px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 16px; }
-        .row { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+        .row { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
         .row label { min-width: 120px; color: #94a3b8; font-size: 13px; }
         .field { margin-bottom: 12px; }
         .field label { display: block; color: #94a3b8; font-size: 13px; margin-bottom: 4px; }
-        .qr-box { background: white; padding: 24px; border-radius: 8px; display: inline-block; }
-        .pwd-display { font-family: ui-monospace, "SF Mono", monospace; font-size: 32px; letter-spacing: 4px; color: #fbbf24; padding: 16px 24px; background: #0f172a; border: 1px dashed #334155; border-radius: 8px; display: inline-block; }
+        .qr-box { background: white; padding: 32px; border-radius: 8px; display: inline-block; }
+        .pwd-display { font-family: ui-monospace, "SF Mono", monospace; font-size: 96px; letter-spacing: 12px; color: #fbbf24; padding: 32px 48px; background: #0f172a; border: 1px dashed #334155; border-radius: 8px; display: inline-block; }
         .question-card { background: #1e293b; padding: 16px; border-radius: 8px; margin-bottom: 12px; border: 1px solid #334155; }
         .question-card .opts { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin: 8px 0; font-size: 13px; }
         .question-card .opt { padding: 6px 10px; background: #0f172a; border-radius: 4px; border: 1px solid #334155; }
@@ -61,10 +63,26 @@
         .summary .label { color: #94a3b8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
         .summary .value { font-size: 28px; font-weight: 700; color: #f1f5f9; margin-top: 4px; }
         .error { color: #fca5a5; font-size: 13px; margin-top: 8px; min-height: 18px; }
-        .success { color: #6ee7b7; font-size: 13px; margin-top: 8px; }
         .actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
         .url-input { width: 100%; max-width: 600px; }
+        .topbar { background: #1e293b; padding: 14px 20px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 20px; }
+        .selector-row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
+        .selector-row .selector { display: flex; gap: 6px; align-items: end; }
+        .selector-row .selector > div { flex: 1; }
+        .selector-row label { display: block; color: #94a3b8; font-size: 12px; margin-bottom: 4px; }
+        .selector-row select { padding-right: 28px; }
+        .manage-panel { background: #0f172a; padding: 20px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 20px; }
+        .manage-panel h3 { margin-top: 0; }
+        .manage-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 8px 12px; background: #1e293b; border-radius: 6px; margin-bottom: 6px; border: 1px solid #334155; }
+        .quiz-meta { font-size: 12px; color: #94a3b8; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .form-grid > * { grid-column: span 1; }
+        .form-grid > .full { grid-column: span 2; }
+        @media (max-width: 700px) {
+            .selector-row { grid-template-columns: 1fr; }
+            .form-grid { grid-template-columns: 1fr; }
+        }
     </style>
 </head>
 <body>
@@ -85,6 +103,54 @@
                 <button class="secondary" id="logoutBtn">Sign out</button>
             </div>
 
+            <div class="topbar">
+                <div class="selector-row">
+                    <div class="selector">
+                        <div>
+                            <label>Course</label>
+                            <select id="courseSelect"></select>
+                        </div>
+                    </div>
+                    <div class="selector">
+                        <div>
+                            <label>Quiz</label>
+                            <select id="quizSelect"></select>
+                        </div>
+                    </div>
+                    <button class="secondary" id="toggleManageBtn">Manage</button>
+                </div>
+            </div>
+
+            <div class="manage-panel" id="managePanel" style="display: none;">
+                <h3>Courses</h3>
+                <div id="courseManageList"></div>
+                <details>
+                    <summary class="muted" style="cursor: pointer; padding: 8px 0;">+ Add new course</summary>
+                    <div style="background: #1e293b; padding: 12px; border-radius: 6px; margin-top: 8px;">
+                        <div class="field"><input type="text" id="newCourseName" placeholder="Course name (e.g. Aviation Leadership)"></div>
+                        <button id="addCourseSubmitBtn">Create course</button>
+                        <div class="error" id="addCourseError"></div>
+                    </div>
+                </details>
+
+                <h3 style="margin-top: 24px;">Quizzes in <span id="manageQuizCourseName" style="color: #f1f5f9;"></span></h3>
+                <div id="quizManageList"></div>
+                <details>
+                    <summary class="muted" style="cursor: pointer; padding: 8px 0;">+ Add new quiz</summary>
+                    <div style="background: #1e293b; padding: 12px; border-radius: 6px; margin-top: 8px;">
+                        <div class="form-grid">
+                            <div class="full"><label class="muted">Title</label><input type="text" id="newQuizTitle" placeholder="e.g. Critical Decision Making"></div>
+                            <div><label class="muted">Week #</label><input type="number" id="newQuizWeek" value="1" min="1"></div>
+                            <div><label class="muted">Session #</label><input type="number" id="newQuizSession" value="1" min="1"></div>
+                            <div><label class="muted">Passcode</label><input type="text" id="newQuizPassword" placeholder="6 digits"></div>
+                            <div><label class="muted">Time limit (min)</label><input type="number" id="newQuizMinutes" value="5" min="1"></div>
+                        </div>
+                        <button id="addQuizSubmitBtn" style="margin-top: 10px;">Create quiz</button>
+                        <div class="error" id="addQuizError"></div>
+                    </div>
+                </details>
+            </div>
+
             <div class="tabs">
                 <button class="tab active" data-tab="qr">QR Code</button>
                 <button class="tab" data-tab="passcode">Passcode</button>
@@ -97,7 +163,7 @@
             <div class="panel active" id="panel-qr">
                 <div class="card" style="text-align: center;">
                     <h2 style="font-size: 28px; margin-bottom: 24px;">Scan to Join</h2>
-                    <div class="qr-box" id="qrBox" style="padding: 32px;"></div>
+                    <div class="qr-box" id="qrBox"></div>
                     <p class="muted" style="margin-top: 16px; font-size: 14px;" id="qrUrlText"></p>
                 </div>
                 <details style="margin-top: 16px;">
@@ -114,7 +180,7 @@
             <div class="panel" id="panel-passcode">
                 <div class="card" style="text-align: center;">
                     <h2 style="font-size: 28px; margin-bottom: 24px;">Quiz Password</h2>
-                    <div class="pwd-display" id="pwdDisplay" style="font-size: 96px; letter-spacing: 12px; padding: 32px 48px;">------</div>
+                    <div class="pwd-display" id="pwdDisplay">------</div>
                 </div>
                 <details style="margin-top: 16px;">
                     <summary class="muted" style="cursor: pointer;">Change passcode</summary>
@@ -156,20 +222,20 @@
             <div class="panel" id="panel-settings">
                 <div class="card">
                     <h2>Quiz Mode</h2>
-                    <p class="muted" style="margin-bottom: 16px;">Choose how students access the quiz.</p>
+                    <p class="muted" style="margin-bottom: 16px;">How students access this quiz.</p>
                     <div class="row" style="gap: 12px; flex-direction: column; align-items: stretch;">
-                        <label style="display: flex; gap: 12px; padding: 14px; background: #0f172a; border: 2px solid #334155; border-radius: 8px; cursor: pointer;" id="modePasswordOpt">
+                        <label style="display: flex; gap: 12px; padding: 14px; background: #0f172a; border: 2px solid #334155; border-radius: 8px; cursor: pointer;">
                             <input type="radio" name="mode" value="password" style="width: auto; margin-top: 4px;">
                             <div style="flex: 1;">
                                 <strong>Password mode</strong>
-                                <p class="muted" style="margin-top: 4px; font-size: 13px;">Students enter the quiz on their own using the passcode. Self-paced — start whenever they want.</p>
+                                <p class="muted" style="margin-top: 4px; font-size: 13px;">Students enter the passcode and start whenever they want.</p>
                             </div>
                         </label>
-                        <label style="display: flex; gap: 12px; padding: 14px; background: #0f172a; border: 2px solid #334155; border-radius: 8px; cursor: pointer;" id="modeSyncOpt">
+                        <label style="display: flex; gap: 12px; padding: 14px; background: #0f172a; border: 2px solid #334155; border-radius: 8px; cursor: pointer;">
                             <input type="radio" name="mode" value="sync" style="width: auto; margin-top: 4px;">
                             <div style="flex: 1;">
                                 <strong>Synchronous mode</strong>
-                                <p class="muted" style="margin-top: 4px; font-size: 13px;">Students join a waiting room. You see who's in. Click "Begin" and everyone starts at the same time.</p>
+                                <p class="muted" style="margin-top: 4px; font-size: 13px;">Students join a waiting room. Click "Begin" to start everyone simultaneously. Only one quiz can be in sync mode at a time.</p>
                             </div>
                         </label>
                     </div>
@@ -217,14 +283,23 @@
     <script>
         const API_BASE_URL = window.API_BASE_URL_OVERRIDE || 'https://aviation-quiz-peach.vercel.app';
         const TOKEN_KEY = 'aviationQuiz.instructorToken';
+        const SELECTED_KEY = 'aviationQuiz.selected';
 
         const $ = id => document.getElementById(id);
         let token = sessionStorage.getItem(TOKEN_KEY) || null;
+        let courses = [];
+        let quizzes = [];
+        let currentCourseId = null;
+        let currentQuizId = null;
         let questionsCache = [];
         let editingQuestionId = null;
         let waitingRoomPoll = null;
         let currentMode = 'password';
         let currentStatus = 'inactive';
+
+        function escapeHtml(s) {
+            return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
+        }
 
         async function api(path, opts = {}) {
             const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
@@ -245,11 +320,18 @@
             $('loginScreen').style.display = 'block';
             $('portal').style.display = 'none';
         }
-        function showPortal() {
+        async function showPortal() {
             $('loginScreen').style.display = 'none';
             $('portal').style.display = 'block';
-            switchTab('qr');
-            loadQuiz();
+            try {
+                await loadCourses();
+                if (!courses.length) {
+                    // First-time use: prompt to create a course
+                    $('managePanel').style.display = 'block';
+                }
+            } catch (e) {
+                console.error(e);
+            }
         }
 
         async function login() {
@@ -279,15 +361,283 @@
 
         function logout() {
             sessionStorage.removeItem(TOKEN_KEY);
+            sessionStorage.removeItem(SELECTED_KEY);
             token = null;
             $('codeInput').value = '';
             stopWaitingRoomPoll();
             showLogin();
         }
 
+        function saveSelection() {
+            try { sessionStorage.setItem(SELECTED_KEY, JSON.stringify({ courseId: currentCourseId, quizId: currentQuizId })); } catch (e) {}
+        }
+        function loadSelection() {
+            try { return JSON.parse(sessionStorage.getItem(SELECTED_KEY) || '{}'); } catch (e) { return {}; }
+        }
+
+        async function loadCourses() {
+            const data = await api('/api/instructor?action=courses');
+            courses = data.courses || [];
+            renderCourseSelect();
+            renderCourseManage();
+            const sel = loadSelection();
+            const startCourseId = (sel.courseId && courses.find(c => c.id === sel.courseId)) ? sel.courseId : (courses[0]?.id ?? null);
+            if (startCourseId) {
+                $('courseSelect').value = startCourseId;
+                await onCourseChanged(sel.quizId);
+            } else {
+                $('quizSelect').innerHTML = '<option>(no quizzes)</option>';
+                $('manageQuizCourseName').textContent = '(create a course first)';
+                $('quizManageList').innerHTML = '';
+            }
+        }
+
+        function renderCourseSelect() {
+            const sel = $('courseSelect');
+            sel.innerHTML = '';
+            if (!courses.length) {
+                sel.innerHTML = '<option>(no courses yet)</option>';
+                return;
+            }
+            courses.forEach(c => {
+                const o = document.createElement('option');
+                o.value = c.id;
+                o.textContent = c.name;
+                sel.appendChild(o);
+            });
+        }
+
+        function renderCourseManage() {
+            const list = $('courseManageList');
+            list.innerHTML = '';
+            if (!courses.length) {
+                list.innerHTML = '<p class="muted">No courses yet. Create one below.</p>';
+                return;
+            }
+            courses.forEach(c => {
+                const row = document.createElement('div');
+                row.className = 'manage-row';
+                row.innerHTML = `<div><strong class="cname"></strong></div>
+                    <div class="actions">
+                        <button class="secondary edit">Rename</button>
+                        <button class="danger del">Delete</button>
+                    </div>`;
+                row.querySelector('.cname').textContent = c.name;
+                row.querySelector('.edit').onclick = () => renameCourse(c);
+                row.querySelector('.del').onclick = () => deleteCourse(c);
+                list.appendChild(row);
+            });
+        }
+
+        async function addCourse() {
+            $('addCourseError').textContent = '';
+            const name = $('newCourseName').value.trim();
+            if (!name) { $('addCourseError').textContent = 'Name required'; return; }
+            try {
+                const data = await api('/api/instructor?action=courses', {
+                    method: 'POST',
+                    body: JSON.stringify({ name })
+                });
+                $('newCourseName').value = '';
+                courses.push(data.course);
+                renderCourseSelect();
+                renderCourseManage();
+                $('courseSelect').value = data.course.id;
+                await onCourseChanged();
+            } catch (e) {
+                $('addCourseError').textContent = e.message;
+            }
+        }
+
+        async function renameCourse(c) {
+            const name = prompt(`Rename course "${c.name}" to:`, c.name);
+            if (!name || name === c.name) return;
+            try {
+                await api(`/api/instructor?action=courses&id=${c.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ name: name.trim() })
+                });
+                c.name = name.trim();
+                renderCourseSelect();
+                renderCourseManage();
+            } catch (e) { alert('Failed: ' + e.message); }
+        }
+
+        async function deleteCourse(c) {
+            if (!confirm(`Delete "${c.name}"? All its quizzes, questions, and submissions will be permanently deleted. This cannot be undone.`)) return;
+            try {
+                await api(`/api/instructor?action=courses&id=${c.id}`, { method: 'DELETE' });
+                await loadCourses();
+            } catch (e) { alert('Failed: ' + e.message); }
+        }
+
+        async function onCourseChanged(preferQuizId) {
+            currentCourseId = Number($('courseSelect').value) || null;
+            const course = courses.find(c => c.id === currentCourseId);
+            $('manageQuizCourseName').textContent = course ? course.name : '';
+            await loadQuizzes(preferQuizId);
+            saveSelection();
+        }
+
+        async function loadQuizzes(preferQuizId) {
+            if (!currentCourseId) {
+                quizzes = [];
+                renderQuizSelect();
+                renderQuizManage();
+                return;
+            }
+            const data = await api(`/api/instructor?action=quizzes&courseId=${currentCourseId}`);
+            quizzes = data.quizzes || [];
+            renderQuizSelect();
+            renderQuizManage();
+            const startQuizId = (preferQuizId && quizzes.find(q => q.id === preferQuizId))
+                ? preferQuizId
+                : (quizzes[0]?.id ?? null);
+            if (startQuizId) {
+                $('quizSelect').value = startQuizId;
+                await onQuizChanged();
+            } else {
+                currentQuizId = null;
+                clearTabs();
+            }
+        }
+
+        function quizLabel(q) {
+            return `W${q.week_number ?? '?'}S${q.session_number ?? '?'} — ${q.title}`;
+        }
+
+        function renderQuizSelect() {
+            const sel = $('quizSelect');
+            sel.innerHTML = '';
+            if (!quizzes.length) {
+                sel.innerHTML = '<option>(no quizzes yet)</option>';
+                return;
+            }
+            quizzes.forEach(q => {
+                const o = document.createElement('option');
+                o.value = q.id;
+                o.textContent = quizLabel(q);
+                sel.appendChild(o);
+            });
+        }
+
+        function renderQuizManage() {
+            const list = $('quizManageList');
+            list.innerHTML = '';
+            if (!quizzes.length) {
+                list.innerHTML = '<p class="muted">No quizzes in this course yet.</p>';
+                return;
+            }
+            quizzes.forEach(q => {
+                const row = document.createElement('div');
+                row.className = 'manage-row';
+                row.innerHTML = `<div>
+                    <strong class="qname"></strong>
+                    <div class="quiz-meta">Week <span class="qw"></span>, Session <span class="qs"></span> · password: <code class="qp"></code> · <span class="qmode"></span></div>
+                </div>
+                <div class="actions">
+                    <button class="secondary edit">Edit</button>
+                    <button class="danger del">Delete</button>
+                </div>`;
+                row.querySelector('.qname').textContent = q.title;
+                row.querySelector('.qw').textContent = q.week_number;
+                row.querySelector('.qs').textContent = q.session_number;
+                row.querySelector('.qp').textContent = q.password || '(none)';
+                row.querySelector('.qmode').textContent = q.mode;
+                row.querySelector('.edit').onclick = () => editQuiz(q);
+                row.querySelector('.del').onclick = () => deleteQuiz(q);
+                list.appendChild(row);
+            });
+        }
+
+        async function addQuiz() {
+            $('addQuizError').textContent = '';
+            const title = $('newQuizTitle').value.trim();
+            const password = $('newQuizPassword').value.trim();
+            const week_number = parseInt($('newQuizWeek').value, 10);
+            const session_number = parseInt($('newQuizSession').value, 10);
+            const time_limit_minutes = parseInt($('newQuizMinutes').value, 10);
+            if (!title) { $('addQuizError').textContent = 'Title required'; return; }
+            if (!password) { $('addQuizError').textContent = 'Password required'; return; }
+            if (!currentCourseId) { $('addQuizError').textContent = 'Select a course first'; return; }
+            try {
+                const data = await api('/api/instructor?action=quizzes', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        course_id: currentCourseId,
+                        title, password, week_number, session_number, time_limit_minutes
+                    })
+                });
+                $('newQuizTitle').value = '';
+                $('newQuizPassword').value = '';
+                await loadQuizzes(data.quiz.id);
+            } catch (e) {
+                $('addQuizError').textContent = e.message;
+            }
+        }
+
+        async function editQuiz(q) {
+            const newTitle = prompt('Title:', q.title);
+            if (newTitle === null) return;
+            const newWeek = prompt('Week #:', q.week_number);
+            if (newWeek === null) return;
+            const newSession = prompt('Session #:', q.session_number);
+            if (newSession === null) return;
+            const newPassword = prompt('Passcode:', q.password || '');
+            if (newPassword === null) return;
+            try {
+                await api(`/api/instructor?action=quiz&quizId=${q.id}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({
+                        title: newTitle.trim() || q.title,
+                        week_number: parseInt(newWeek, 10) || q.week_number,
+                        session_number: parseInt(newSession, 10) || q.session_number,
+                        password: newPassword.trim() || q.password
+                    })
+                });
+                await loadQuizzes(q.id);
+            } catch (e) { alert('Failed: ' + e.message); }
+        }
+
+        async function deleteQuiz(q) {
+            if (!confirm(`Delete "${q.title}"? All questions and submissions for this quiz will be permanently deleted.`)) return;
+            try {
+                await api(`/api/instructor?action=quiz&quizId=${q.id}`, { method: 'DELETE' });
+                await loadQuizzes();
+            } catch (e) { alert('Failed: ' + e.message); }
+        }
+
+        async function onQuizChanged() {
+            currentQuizId = Number($('quizSelect').value) || null;
+            saveSelection();
+            const activeTab = document.querySelector('.tab.active')?.dataset.tab || 'qr';
+            switchTab(activeTab);
+            // also load passcode display + quiz info
+            await refreshCurrentQuizInfo();
+        }
+
+        async function refreshCurrentQuizInfo() {
+            if (!currentQuizId) return;
+            try {
+                const data = await api(`/api/instructor?action=quiz&quizId=${currentQuizId}`);
+                $('pwdDisplay').textContent = data.quiz?.password || '(not set)';
+                currentMode = data.quiz?.mode || 'password';
+                currentStatus = data.quiz?.status || 'inactive';
+            } catch (e) {}
+        }
+
+        function clearTabs() {
+            $('pwdDisplay').textContent = '(no quiz selected)';
+            $('questionList').innerHTML = '<p class="muted">Select a quiz first.</p>';
+            $('submissionsList').innerHTML = '<p class="muted">Select a quiz first.</p>';
+            $('statsBody').innerHTML = '<p class="muted">Select a quiz first.</p>';
+            $('qrBox').innerHTML = '';
+        }
+
         function switchTab(name) {
             document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === name));
             document.querySelectorAll('.panel').forEach(p => p.classList.toggle('active', p.id === `panel-${name}`));
+            if (!currentQuizId) return;
             if (name === 'qr') drawQR();
             if (name === 'questions') loadQuestions();
             if (name === 'submissions') loadSubmissions();
@@ -304,27 +654,18 @@
             new QRCode($('qrBox'), { text: url, width: 280, height: 280, correctLevel: QRCode.CorrectLevel.M });
         }
 
-        async function loadQuiz() {
-            try {
-                const data = await api('/api/instructor?action=quiz');
-                $('pwdDisplay').textContent = data.quiz?.password || '(not set)';
-            } catch (e) {
-                $('pwdDisplay').textContent = '(failed to load)';
-            }
-        }
-
         async function savePassword() {
             const v = $('newPwdInput').value.trim();
             $('pwdError').textContent = '';
             if (!v) { $('pwdError').textContent = 'Enter a passcode'; return; }
+            if (!currentQuizId) return;
             try {
-                await api('/api/instructor?action=quiz', {
+                await api(`/api/instructor?action=quiz&quizId=${currentQuizId}`, {
                     method: 'PUT',
                     body: JSON.stringify({ password: v })
                 });
                 $('newPwdInput').value = '';
-                await loadQuiz();
-                $('pwdError').textContent = '';
+                await refreshCurrentQuizInfo();
                 $('pwdError').style.color = '#6ee7b7';
                 $('pwdError').textContent = 'Saved.';
                 setTimeout(() => { $('pwdError').textContent = ''; $('pwdError').style.color = ''; }, 2000);
@@ -335,17 +676,21 @@
 
         async function loadQuestions() {
             try {
-                const data = await api('/api/instructor?action=questions');
+                const data = await api(`/api/instructor?action=questions&quizId=${currentQuizId}`);
                 questionsCache = data.questions || [];
                 renderQuestions();
             } catch (e) {
-                $('questionList').innerHTML = `<p class="error">${e.message}</p>`;
+                $('questionList').innerHTML = `<p class="error">${escapeHtml(e.message)}</p>`;
             }
         }
 
         function renderQuestions() {
             const list = $('questionList');
             list.innerHTML = '';
+            if (!questionsCache.length) {
+                list.innerHTML = '<p class="muted">No questions yet. Click + Add Question.</p>';
+                return;
+            }
             questionsCache.forEach(q => {
                 const el = document.createElement('div');
                 el.className = 'question-card';
@@ -437,7 +782,7 @@
                         method: 'PUT', body: JSON.stringify(body)
                     });
                 } else {
-                    await api('/api/instructor?action=questions', {
+                    await api(`/api/instructor?action=questions&quizId=${currentQuizId}`, {
                         method: 'POST', body: JSON.stringify(body)
                     });
                 }
@@ -454,16 +799,14 @@
             try {
                 await api(`/api/instructor?action=questions&id=${id}`, { method: 'DELETE' });
                 await loadQuestions();
-            } catch (e) {
-                alert('Failed: ' + e.message);
-            }
+            } catch (e) { alert('Failed: ' + e.message); }
         }
 
         async function loadSubmissions() {
             const list = $('submissionsList');
             list.innerHTML = '<p class="muted">Loading...</p>';
             try {
-                const data = await api('/api/instructor?action=submissions');
+                const data = await api(`/api/instructor?action=submissions&quizId=${currentQuizId}`);
                 if (!data.submissions?.length) { list.innerHTML = '<p class="muted">No submissions yet.</p>'; return; }
                 list.innerHTML = '';
                 data.submissions.forEach(s => {
@@ -503,7 +846,7 @@
                     list.appendChild(row);
                 });
             } catch (e) {
-                list.innerHTML = `<p class="error">${e.message}</p>`;
+                list.innerHTML = `<p class="error">${escapeHtml(e.message)}</p>`;
             }
         }
 
@@ -521,13 +864,44 @@
             el.innerHTML = html;
         }
 
-        function escapeHtml(s) {
-            return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
+        async function loadStats() {
+            const body = $('statsBody');
+            body.innerHTML = '<p class="muted">Loading...</p>';
+            try {
+                if (!questionsCache.length) await loadQuestions();
+                const data = await api(`/api/instructor?action=stats&quizId=${currentQuizId}`);
+                let html = `
+                    <div class="summary">
+                        <div class="item"><div class="label">Total Submissions</div><div class="value">${data.totalSubmissions}</div></div>
+                        <div class="item"><div class="label">Avg Score</div><div class="value">${data.averageScore} / ${data.totalQuestions}</div></div>
+                        <div class="item"><div class="label">Questions</div><div class="value">${data.totalQuestions}</div></div>
+                    </div>
+                `;
+                data.perQuestion.forEach(q => {
+                    html += `<div class="stat-card">
+                        <div class="qtext">Q${q.number}: ${escapeHtml(q.text)}</div>
+                        <p class="muted" style="margin-bottom: 8px; font-size: 12px;">Correct: ${q.correctAnswer} • ${q.correct}/${q.total} got it right (${q.percent}%)</p>`;
+                    ['A','B','C','D'].forEach(letter => {
+                        const c = q.choiceCounts[letter] || 0;
+                        const pct = q.total ? (c / q.total) * 100 : 0;
+                        const isCorrect = letter === q.correctAnswer;
+                        html += `<div class="bar-container">
+                            <span>${letter}</span>
+                            <div class="bar-bg"><div class="bar-fill ${isCorrect ? 'bar-correct' : 'bar-other'}" style="width: ${pct}%;">${pct > 8 ? Math.round(pct) + '%' : ''}</div></div>
+                            <span class="muted">${c}/${q.total}</span>
+                        </div>`;
+                    });
+                    html += '</div>';
+                });
+                body.innerHTML = html;
+            } catch (e) {
+                body.innerHTML = `<p class="error">${escapeHtml(e.message)}</p>`;
+            }
         }
 
         async function loadSettings() {
             try {
-                const data = await api('/api/instructor?action=quiz');
+                const data = await api(`/api/instructor?action=quiz&quizId=${currentQuizId}`);
                 currentMode = data.quiz?.mode || 'password';
                 currentStatus = data.quiz?.status || 'inactive';
                 document.querySelector(`input[name=mode][value=${currentMode}]`).checked = true;
@@ -541,23 +915,6 @@
                 }
             } catch (e) {
                 $('modeError').textContent = e.message;
-            }
-        }
-
-        async function saveTimer() {
-            $('timerError').textContent = '';
-            const enabled = $('timerEnabledToggle').checked;
-            const minutes = Math.max(1, Math.min(180, parseInt($('timerMinutesInput').value, 10) || 5));
-            try {
-                await api('/api/instructor?action=quiz', {
-                    method: 'PUT',
-                    body: JSON.stringify({ timer_enabled: enabled, time_limit_minutes: minutes })
-                });
-                $('timerError').style.color = '#6ee7b7';
-                $('timerError').textContent = 'Saved.';
-                setTimeout(() => { $('timerError').textContent = ''; $('timerError').style.color = ''; }, 1500);
-            } catch (e) {
-                $('timerError').textContent = e.message;
             }
         }
 
@@ -576,7 +933,7 @@
         async function setMode(mode) {
             $('modeError').textContent = '';
             try {
-                await api('/api/instructor?action=quiz', {
+                await api(`/api/instructor?action=quiz&quizId=${currentQuizId}`, {
                     method: 'PUT',
                     body: JSON.stringify({ mode })
                 });
@@ -592,7 +949,7 @@
 
         async function setStatus(status) {
             try {
-                await api('/api/instructor?action=set-status', {
+                await api(`/api/instructor?action=set-status&quizId=${currentQuizId}`, {
                     method: 'PUT',
                     body: JSON.stringify({ status })
                 });
@@ -612,7 +969,7 @@
 
         async function refreshWaitingRoom() {
             try {
-                const data = await api('/api/instructor?action=waiting-room');
+                const data = await api(`/api/instructor?action=waiting-room&quizId=${currentQuizId}`);
                 const list = $('waitingRoomList');
                 const students = data.students || [];
                 $('waitingRoomCount').textContent = `(${students.length})`;
@@ -640,38 +997,20 @@
             if (waitingRoomPoll) { clearInterval(waitingRoomPoll); waitingRoomPoll = null; }
         }
 
-        async function loadStats() {
-            const body = $('statsBody');
-            body.innerHTML = '<p class="muted">Loading...</p>';
+        async function saveTimer() {
+            $('timerError').textContent = '';
+            const enabled = $('timerEnabledToggle').checked;
+            const minutes = Math.max(1, Math.min(180, parseInt($('timerMinutesInput').value, 10) || 5));
             try {
-                if (!questionsCache.length) await loadQuestions();
-                const data = await api('/api/instructor?action=stats');
-                let html = `
-                    <div class="summary">
-                        <div class="item"><div class="label">Total Submissions</div><div class="value">${data.totalSubmissions}</div></div>
-                        <div class="item"><div class="label">Avg Score</div><div class="value">${data.averageScore} / ${data.totalQuestions}</div></div>
-                        <div class="item"><div class="label">Questions</div><div class="value">${data.totalQuestions}</div></div>
-                    </div>
-                `;
-                data.perQuestion.forEach(q => {
-                    html += `<div class="stat-card">
-                        <div class="qtext">Q${q.number}: ${escapeHtml(q.text)}</div>
-                        <p class="muted" style="margin-bottom: 8px; font-size: 12px;">Correct: ${q.correctAnswer} • ${q.correct}/${q.total} got it right (${q.percent}%)</p>`;
-                    ['A','B','C','D'].forEach(letter => {
-                        const c = q.choiceCounts[letter] || 0;
-                        const pct = q.total ? (c / q.total) * 100 : 0;
-                        const isCorrect = letter === q.correctAnswer;
-                        html += `<div class="bar-container">
-                            <span>${letter}</span>
-                            <div class="bar-bg"><div class="bar-fill ${isCorrect ? 'bar-correct' : 'bar-other'}" style="width: ${pct}%;">${pct > 8 ? Math.round(pct) + '%' : ''}</div></div>
-                            <span class="muted">${c}/${q.total}</span>
-                        </div>`;
-                    });
-                    html += '</div>';
+                await api(`/api/instructor?action=quiz&quizId=${currentQuizId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ timer_enabled: enabled, time_limit_minutes: minutes })
                 });
-                body.innerHTML = html;
+                $('timerError').style.color = '#6ee7b7';
+                $('timerError').textContent = 'Saved.';
+                setTimeout(() => { $('timerError').textContent = ''; $('timerError').style.color = ''; }, 1500);
             } catch (e) {
-                body.innerHTML = `<p class="error">${e.message}</p>`;
+                $('timerError').textContent = e.message;
             }
         }
 
@@ -691,6 +1030,14 @@
             $('beginQuizBtn').onclick = () => setStatus('active');
             $('endQuizBtn').onclick = () => setStatus('ended');
             $('resetSessionBtn').onclick = () => setStatus('inactive');
+            $('toggleManageBtn').onclick = () => {
+                const p = $('managePanel');
+                p.style.display = p.style.display === 'none' ? 'block' : 'none';
+            };
+            $('addCourseSubmitBtn').onclick = addCourse;
+            $('addQuizSubmitBtn').onclick = addQuiz;
+            $('courseSelect').onchange = () => onCourseChanged();
+            $('quizSelect').onchange = () => onQuizChanged();
             document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchTab(t.dataset.tab));
 
             if (token) showPortal();

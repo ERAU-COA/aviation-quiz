@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { getSupabase, getClientIp, applyCors, getActiveQuizId } from './_lib.js';
+import { getSupabase, getClientIp, applyCors } from './_lib.js';
 
 export default async function handler(req, res) {
   if (applyCors(req, res)) return;
@@ -8,20 +8,22 @@ export default async function handler(req, res) {
   const auth = req.headers.authorization || '';
   if (!auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Missing token' });
 
+  let decoded;
   try {
-    jwt.verify(auth.slice(7), process.env.JWT_SECRET);
+    decoded = jwt.verify(auth.slice(7), process.env.JWT_SECRET);
   } catch {
     return res.status(401).json({ error: 'Invalid or expired session' });
   }
+  const quizId = decoded?.quizId;
+  if (!quizId) return res.status(401).json({ error: 'Token missing quizId' });
 
   const supabase = getSupabase();
   const ip = getClientIp(req);
 
   try {
-    const quizId = await getActiveQuizId(supabase);
     const { data: quiz } = await supabase
       .from('quizzes')
-      .select('time_limit_minutes, timer_enabled')
+      .select('time_limit_minutes, timer_enabled, title')
       .eq('id', quizId)
       .single();
     const { data: questions, error } = await supabase
@@ -34,13 +36,14 @@ export default async function handler(req, res) {
     await supabase.from('audit_log').insert({
       event_type: 'questions_retrieved',
       ip_address: ip,
-      event_data: { count: questions.length }
+      event_data: { count: questions.length, quiz_id: quizId }
     });
 
     return res.status(200).json({
       success: true,
       questions,
       totalQuestions: questions.length,
+      quizTitle: quiz?.title,
       timerEnabled: quiz?.timer_enabled !== false,
       timeLimitSeconds: Math.max(60, Math.floor((quiz?.time_limit_minutes ?? 5) * 60))
     });
