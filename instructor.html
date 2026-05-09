@@ -799,19 +799,29 @@
         function openBulkEditor() {
             editingQuestionId = null;
             const editor = $('questionEditor');
-            const example = `1. What is the most important leadership principle in a cockpit emergency?
+            const example = `Multi-line format:
+1. What is the most important leadership principle in a cockpit emergency?
 A. Making the fastest decision possible
 B. Maintaining crew resource management and clear communication *
 C. Following procedures without questioning
 D. Delegating all decisions to the co-pilot
 
+Mixed markers:
 2. What does CRM stand for?
 a) Cockpit Resource Management
 b) Crew Resource Management (correct)
 c) Crew Risk Management
 d) Cockpit Risk Mitigation
 
-3. When facing a critical decision under pressure, a leader should:
+Inline format (options on one line):
+3. How is OSCM defined?
+ A) The management of customer relationships. B) The design, operation, and improvement of systems. C) The financial tracking of transactions. D) The marketing of products. Correct Answer: B
+
+4. Which is NOT one of the five categories?
+ A) Planning B) Sourcing C) Marketing D) Making Correct Answer: C
+
+Standalone Answer line:
+5. When facing a critical decision under pressure, a leader should:
 A) Act immediately without consultation
 B) Take time to gather all available information
 C) Avoid taking responsibility
@@ -864,47 +874,67 @@ Answer: B`;
         }
 
         function parseBlock(block) {
-            const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
-            if (lines.length < 5) return null;
-            const optionRegex = /^[\(\[]?\s*([a-dA-D])[\)\]\.\:]\s*(.+)$/;
-            const questionLines = [];
-            const options = {};
+            const text = block.trim();
+            if (!text) return null;
+
+            const optionRegex = /(?:^|\s)([A-Da-d])\s*[\)\]\.\:]\s*/g;
+            const matches = [];
+            let m;
+            while ((m = optionRegex.exec(text)) !== null) {
+                matches.push({ letter: m[1].toUpperCase(), start: m.index, end: optionRegex.lastIndex });
+                if (m[0].length === 0) optionRegex.lastIndex++;
+            }
+            if (matches.length < 4) return null;
+
+            const aIdx = matches.findIndex(x => x.letter === 'A');
+            if (aIdx === -1) return null;
+            const bIdx = matches.findIndex((x, i) => i > aIdx && x.letter === 'B');
+            if (bIdx === -1) return null;
+            const cIdx = matches.findIndex((x, i) => i > bIdx && x.letter === 'C');
+            if (cIdx === -1) return null;
+            const dIdx = matches.findIndex((x, i) => i > cIdx && x.letter === 'D');
+            if (dIdx === -1) return null;
+
+            let questionText = text.slice(0, matches[aIdx].start).trim();
+            questionText = questionText.replace(/^(?:Q(?:uestion)?\s*)?\d+\s*[.):]\s*/i, '');
+
+            const opts = {
+                A: text.slice(matches[aIdx].end, matches[bIdx].start).trim(),
+                B: text.slice(matches[bIdx].end, matches[cIdx].start).trim(),
+                C: text.slice(matches[cIdx].end, matches[dIdx].start).trim(),
+                D: text.slice(matches[dIdx].end).trim()
+            };
+
             let correctAnswer = null;
-            for (const line of lines) {
-                const m = line.match(optionRegex);
-                if (m && Object.keys(options).length < 4) {
-                    const letter = m[1].toUpperCase();
-                    let txt = m[2].trim();
-                    if (/(\*+|★|✓)\s*$/.test(txt)) {
-                        correctAnswer = letter;
-                        txt = txt.replace(/(\*+|★|✓)\s*$/, '').trim();
-                    } else if (/\(\s*correct\s*\)/i.test(txt)) {
-                        correctAnswer = letter;
-                        txt = txt.replace(/\s*\(\s*correct\s*\)\s*/i, '').trim();
-                    } else if (/\(\s*answer\s*\)/i.test(txt)) {
-                        correctAnswer = letter;
-                        txt = txt.replace(/\s*\(\s*answer\s*\)\s*/i, '').trim();
-                    }
-                    options[letter] = txt;
-                } else if (Object.keys(options).length === 0) {
-                    questionLines.push(line);
-                } else {
-                    const ansMatch = line.match(/^(?:Correct\s+)?Answer\s*[:=]\s*([a-dA-D])\b/i);
-                    if (ansMatch) correctAnswer = ansMatch[1].toUpperCase();
+            for (const letter of ['A', 'B', 'C', 'D']) {
+                const ansMatch = opts[letter].match(/^([\s\S]*?)\s*\b(?:correct\s+answer|answer|correct|ans)\s*[:=]\s*([A-Da-d])\b[\s\S]*$/i);
+                if (ansMatch) {
+                    opts[letter] = ansMatch[1].trim();
+                    if (!correctAnswer) correctAnswer = ansMatch[2].toUpperCase();
+                }
+                if (/(\*+|★|✓)\s*$/.test(opts[letter])) {
+                    if (!correctAnswer) correctAnswer = letter;
+                    opts[letter] = opts[letter].replace(/(\*+|★|✓)\s*$/, '').trim();
+                }
+                if (/\(\s*correct\s*\)/i.test(opts[letter])) {
+                    if (!correctAnswer) correctAnswer = letter;
+                    opts[letter] = opts[letter].replace(/\s*\(\s*correct\s*\)\s*/i, '').trim();
+                }
+                if (/\(\s*answer\s*\)/i.test(opts[letter])) {
+                    if (!correctAnswer) correctAnswer = letter;
+                    opts[letter] = opts[letter].replace(/\s*\(\s*answer\s*\)\s*/i, '').trim();
                 }
             }
-            if (questionLines.length > 0) {
-                questionLines[0] = questionLines[0].replace(/^(?:Q(?:uestion)?\s*)?\d+\s*[.):]\s*/i, '');
-            }
-            const questionText = questionLines.join(' ').trim();
+
             if (!questionText) return null;
-            if (!options.A || !options.B || !options.C || !options.D) return null;
+            if (!opts.A || !opts.B || !opts.C || !opts.D) return null;
+
             return {
                 question_text: questionText,
-                option_a: options.A,
-                option_b: options.B,
-                option_c: options.C,
-                option_d: options.D,
+                option_a: opts.A,
+                option_b: opts.B,
+                option_c: opts.C,
+                option_d: opts.D,
                 correct_answer: correctAnswer || 'A',
                 _autoCorrect: !correctAnswer
             };
