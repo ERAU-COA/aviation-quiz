@@ -1,4 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
+import crypto from 'crypto';
 
 let _client = null;
 export function getSupabase() {
@@ -25,6 +26,10 @@ export function applyCors(req, res) {
     return true;
   }
   return false;
+}
+
+export function computeDeviceFingerprint(ip, userAgent) {
+  return crypto.createHash('sha256').update(`${ip || ''}|${userAgent || ''}`).digest('hex');
 }
 
 export async function getActiveQuizId(supabase) {

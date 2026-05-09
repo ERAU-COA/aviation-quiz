@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { getSupabase, getClientIp, applyCors, getActiveQuizId } from './_lib.js';
+import { getSupabase, getClientIp, applyCors, getActiveQuizId, computeDeviceFingerprint } from './_lib.js';
 
 const MAX_NAME_LENGTH = 120;
 
@@ -20,6 +20,21 @@ export default async function handler(req, res) {
 
   const supabase = getSupabase();
   const ip = getClientIp(req);
+  const ua = req.headers['user-agent'] || '';
+  const fingerprint = computeDeviceFingerprint(ip, ua);
+
+  const { count: dupeCount, error: dupeErr } = await supabase
+    .from('submissions')
+    .select('id', { count: 'exact', head: true })
+    .eq('device_fingerprint', fingerprint);
+  if (dupeErr) {
+    console.error('duplicate check error:', dupeErr);
+    return res.status(500).json({ error: 'Internal server error' });
+  }
+  if ((dupeCount ?? 0) > 0) {
+    return res.status(409).json({ error: 'already_submitted', message: 'This device has already submitted this quiz.' });
+  }
+
   const cleanName = String(studentName).trim().slice(0, MAX_NAME_LENGTH);
   const cleanDevice = typeof deviceType === 'string' ? deviceType.slice(0, 20) : 'unknown';
   const cleanTime = Number.isFinite(Number(timeTaken)) ? Math.max(0, Math.floor(Number(timeTaken))) : 0;
@@ -52,7 +67,8 @@ export default async function handler(req, res) {
         total_questions: questions.length,
         time_taken_seconds: cleanTime,
         ip_address: ip,
-        device_type: cleanDevice
+        device_type: cleanDevice,
+        device_fingerprint: fingerprint
       })
       .select('id')
       .single();

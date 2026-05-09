@@ -48,7 +48,17 @@
 </head>
 <body>
     <div class="container">
-        <div class="screen active" id="consentScreen">
+        <div class="screen active" id="loadingScreen">
+            <h1>&#9992;&#65039; Aviation Leadership Quiz</h1>
+            <p>Loading...</p>
+        </div>
+
+        <div class="screen" id="alreadySubmittedScreen">
+            <h1>Already Submitted</h1>
+            <p style="margin-bottom: 20px;">Our records show this device has already completed the quiz. If you believe this is an error, contact your instructor.</p>
+        </div>
+
+        <div class="screen" id="consentScreen">
             <h1>&#9992;&#65039; Aviation Leadership Quiz</h1>
             <div class="consent-box">
                 <h2>Student Consent &amp; Privacy Notice</h2>
@@ -115,6 +125,7 @@
         const API_BASE_URL = window.API_BASE_URL_OVERRIDE || 'https://aviation-quiz-peach.vercel.app';
 
         const QUIZ_TIME_SECONDS = 300;
+        const SUBMITTED_FLAG = 'aviationQuiz.submitted';
 
         const state = {
             password: '',
@@ -280,11 +291,17 @@
                 });
                 const data = await r.json();
                 if (!r.ok || !data.success) {
+                    if (r.status === 409) {
+                        try { localStorage.setItem(SUBMITTED_FLAG, '1'); } catch (e) {}
+                        showScreen('alreadySubmittedScreen');
+                        return;
+                    }
                     setError('quizError', data.error || 'Submission failed.');
                     state.submitting = false;
                     $('submitBtn').disabled = false;
                     return;
                 }
+                try { localStorage.setItem(SUBMITTED_FLAG, '1'); } catch (e) {}
                 showScreen('resultsScreen');
                 $('scoreDisplay').textContent = `${data.score} / ${data.totalQuestions}`;
                 const container = $('resultsContainer');
@@ -311,6 +328,26 @@
             }
         }
 
+        async function checkSubmissionStatus() {
+            showScreen('loadingScreen');
+            try {
+                const r = await fetch(`${API_BASE_URL}/api/check-status`);
+                const data = await r.json();
+                if (data.alreadySubmitted) {
+                    try { localStorage.setItem(SUBMITTED_FLAG, '1'); } catch (e) {}
+                    showScreen('alreadySubmittedScreen');
+                    return;
+                }
+                try { localStorage.removeItem(SUBMITTED_FLAG); } catch (e) {}
+                showScreen('consentScreen');
+            } catch (e) {
+                let cached = null;
+                try { cached = localStorage.getItem(SUBMITTED_FLAG); } catch (err) {}
+                if (cached === '1') showScreen('alreadySubmittedScreen');
+                else showScreen('consentScreen');
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             buildKeypad();
             $('agreeBtn').onclick = () => showScreen('passwordScreen');
@@ -319,6 +356,7 @@
             $('nextBtn').onclick = () => { state.currentQ++; renderQuestion(); };
             $('submitBtn').onclick = submitQuiz;
             $('studentName').addEventListener('keydown', e => { if (e.key === 'Enter') beginQuiz(); });
+            checkSubmissionStatus();
         });
     </script>
 </body>
