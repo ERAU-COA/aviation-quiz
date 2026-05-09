@@ -128,25 +128,57 @@
         const SUBMITTED_FLAG = 'aviationQuiz.submitted';
         const DEVICE_ID_KEY = 'aviationQuiz.deviceId';
 
+        async function getAudioFingerprint() {
+            try {
+                const Ctx = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+                if (!Ctx) return '';
+                const ctx = new Ctx(1, 5000, 44100);
+                const osc = ctx.createOscillator();
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(10000, ctx.currentTime);
+                const comp = ctx.createDynamicsCompressor();
+                comp.threshold.setValueAtTime(-50, ctx.currentTime);
+                comp.knee.setValueAtTime(40, ctx.currentTime);
+                comp.ratio.setValueAtTime(12, ctx.currentTime);
+                comp.attack.setValueAtTime(0, ctx.currentTime);
+                comp.release.setValueAtTime(0.25, ctx.currentTime);
+                osc.connect(comp);
+                comp.connect(ctx.destination);
+                osc.start(0);
+                const buf = await ctx.startRendering();
+                let sum = 0;
+                const data = buf.getChannelData(0);
+                for (let i = 4500; i < 5000; i++) sum += Math.abs(data[i]);
+                return sum.toString();
+            } catch (e) { return ''; }
+        }
+
         async function computeBrowserFingerprint() {
             const parts = [];
             parts.push(navigator.userAgent || '');
             parts.push(navigator.language || '');
+            parts.push((navigator.languages || []).join(','));
             parts.push(navigator.platform || '');
             parts.push(String(navigator.hardwareConcurrency || ''));
+            parts.push(String(navigator.deviceMemory || ''));
+            parts.push(String(navigator.maxTouchPoints || ''));
             parts.push(`${screen.width}x${screen.height}x${screen.colorDepth}`);
+            parts.push(`${screen.availWidth}x${screen.availHeight}`);
             parts.push(String(window.devicePixelRatio || ''));
             try { parts.push(Intl.DateTimeFormat().resolvedOptions().timeZone || ''); } catch (e) {}
+            try { parts.push(String(new Date().getTimezoneOffset())); } catch (e) {}
             try {
                 const c = document.createElement('canvas');
-                c.width = 200; c.height = 50;
+                c.width = 240; c.height = 60;
                 const ctx = c.getContext('2d');
                 ctx.textBaseline = 'top';
-                ctx.font = '14px Arial';
+                ctx.font = '14px "Arial"';
+                ctx.fillStyle = '#f60';
+                ctx.fillRect(125, 1, 62, 20);
                 ctx.fillStyle = '#069';
-                ctx.fillText('AvL fingerprint test', 2, 14);
-                ctx.fillStyle = 'rgba(102,204,0,0.5)';
-                ctx.fillText('AvL fingerprint test', 4, 16);
+                ctx.fillText('Aviation ✈ Quiz!', 2, 15);
+                ctx.fillStyle = 'rgba(102,204,0,0.7)';
+                ctx.fillText('Aviation ✈ Quiz!', 4, 17);
                 parts.push(c.toDataURL());
             } catch (e) {}
             try {
@@ -158,8 +190,13 @@
                         parts.push(gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || '');
                         parts.push(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '');
                     }
+                    parts.push(gl.getParameter(gl.VERSION) || '');
+                    parts.push(gl.getParameter(gl.SHADING_LANGUAGE_VERSION) || '');
+                    const exts = gl.getSupportedExtensions();
+                    if (exts) parts.push(exts.join(','));
                 }
             } catch (e) {}
+            parts.push(await getAudioFingerprint());
             const buf = new TextEncoder().encode(parts.join('|'));
             const hashBuf = await window.crypto.subtle.digest('SHA-256', buf);
             return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');

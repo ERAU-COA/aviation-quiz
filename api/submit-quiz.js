@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { getSupabase, getClientIp, applyCors, getActiveQuizId, computeDeviceFingerprint } from './_lib.js';
+import { getSupabase, getClientIp, applyCors, getActiveQuizId } from './_lib.js';
 
 const MAX_NAME_LENGTH = 120;
 
@@ -26,8 +26,7 @@ export default async function handler(req, res) {
 
   const supabase = getSupabase();
   const ip = getClientIp(req);
-  const ua = req.headers['user-agent'] || '';
-  const fingerprint = computeDeviceFingerprint(ip, ua);
+  const userAgent = req.headers['user-agent'] || null;
 
   const cleanName = String(studentName).trim().slice(0, MAX_NAME_LENGTH);
 
@@ -84,8 +83,8 @@ export default async function handler(req, res) {
         total_questions: questions.length,
         time_taken_seconds: cleanTime,
         ip_address: ip,
+        user_agent: userAgent,
         device_type: cleanDevice,
-        device_fingerprint: fingerprint,
         device_id: deviceId,
         browser_fingerprint: cleanFingerprint
       })
