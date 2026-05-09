@@ -659,9 +659,9 @@
     </div>
 
     <script>
-        // ===== CONFIGURATION - YOUR CREDENTIALS ARE HERE =====
-        const SUPABASE_URL = 'https://nvagiezojxixpekknagk.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52YWdpZXpvanhpeHBla2tuYWdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyOTg4ODUsImV4cCI6MjA5Mzg3NDg4NX0.kYyap46N4BXpA6w0qtA4zskABuX2GHjx77Cu6Zb96j4';
+        // ===== CONFIGURATION =====
+        const SUPABASE_URL = 'YOUR_SUPABASE_URL_HERE';
+        const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY_HERE';
         const PASSWORD_LENGTH = 6;
 
         // ===== STATE =====
@@ -677,7 +677,12 @@
 
         // ===== INITIALIZE =====
         window.addEventListener('DOMContentLoaded', () => {
-            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            if (!SUPABASE_URL.includes('YOUR_SUPABASE')) {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            } else {
+                showError('quizError', '⚠️ Configure Supabase credentials');
+            }
+
             initKeypad();
         });
 
