@@ -363,9 +363,8 @@
             sessionStorage.removeItem(TOKEN_KEY);
             sessionStorage.removeItem(SELECTED_KEY);
             token = null;
-            $('codeInput').value = '';
             stopWaitingRoomPoll();
-            showLogin();
+            window.location.href = 'https://erau-coa.github.io/aviation-quiz/';
         }
 
         function saveSelection() {
