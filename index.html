@@ -4,83 +4,90 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aviation Leadership Quiz</title>
-    <script async src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.26.0/+esm"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; }
+        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
         .container { background: white; width: 100%; max-width: 500px; border-radius: 12px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
         .screen { display: none; }
         .screen.active { display: block; }
         h1 { color: #1e40af; margin-bottom: 10px; text-align: center; }
         p { color: #666; text-align: center; margin-bottom: 30px; }
+        .consent-box { background: #f9f5ff; padding: 20px; border-radius: 8px; border-left: 4px solid #7c3aed; margin-bottom: 20px; }
+        .consent-box h2 { font-size: 18px; color: #1e40af; margin-bottom: 10px; }
+        .consent-box ul { margin-left: 20px; color: #555; font-size: 14px; line-height: 1.6; }
         .password-display { display: flex; gap: 10px; justify-content: center; margin: 30px 0; }
-        .digit { width: 60px; height: 60px; border: 3px solid #1e40af; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; background: #f0f4ff; }
+        .digit { width: 50px; height: 60px; border: 3px solid #1e40af; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 24px; font-weight: bold; background: #f0f4ff; }
         .digit.filled { background: #1e40af; color: white; }
-        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin: 20px 0; }
-        .btn { padding: 15px; font-size: 18px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; background: #e0e7ff; color: #1e40af; }
+        .keypad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 20px 0; }
+        .btn { padding: 18px; font-size: 20px; font-weight: bold; border: none; border-radius: 8px; cursor: pointer; background: #e0e7ff; color: #1e40af; }
         .btn:active { transform: scale(0.95); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn.delete { background: #fecaca; color: #dc2626; }
         .btn.submit { grid-column: 1 / -1; background: #1e40af; color: white; }
         input { width: 100%; padding: 15px; font-size: 18px; border: 2px solid #047857; border-radius: 8px; text-align: center; margin-bottom: 20px; }
         input:focus { outline: none; border-color: #059669; background: #f0fdf4; }
         .name-btn { width: 100%; padding: 15px; font-size: 18px; font-weight: bold; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; }
-        .name-btn:active { transform: scale(0.98); }
-        .quiz-header { background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: white; padding: 20px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .quiz-header { background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: white; padding: 20px; border-radius: 8px; display: flex; justify-content: space-between; margin-bottom: 20px; }
         .timer { font-size: 24px; font-weight: bold; }
         .timer.warning { color: #fca5a5; }
         .question-text { font-size: 20px; font-weight: bold; color: #111827; margin-bottom: 20px; }
-        .options { display: flex; flex-direction: column; gap: 15px; margin-bottom: 30px; }
+        .options { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
         .option { padding: 15px; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 16px; display: flex; align-items: center; gap: 10px; }
         .option:hover { border-color: #7c3aed; background: #faf5ff; }
         .option.selected { background: #ede9fe; border-color: #7c3aed; }
-        .submit-btn { width: 100%; padding: 15px; font-size: 18px; font-weight: bold; background: #7c3aed; color: white; border: none; border-radius: 8px; cursor: pointer; }
-        .submit-btn:active { transform: scale(0.98); }
+        .submit-btn { width: 100%; padding: 15px; font-size: 18px; font-weight: bold; background: #7c3aed; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; }
+        .submit-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .nav-row { display: flex; gap: 12px; margin-top: 10px; }
+        .nav-row .submit-btn { margin-top: 0; }
         .score { text-align: center; font-size: 48px; font-weight: bold; color: #7c3aed; margin: 30px 0; }
-        .results { margin-top: 20px; }
-        .result-item { padding: 15px; border-left: 4px solid #7c3aed; background: #f9f5ff; border-radius: 4px; margin-bottom: 10px; }
+        .result-item { padding: 15px; border-left: 4px solid #7c3aed; background: #f9f5ff; border-radius: 4px; margin-bottom: 10px; font-size: 14px; }
         .result-item.correct { border-left-color: #10b981; background: #ecfdf5; }
         .result-item.incorrect { border-left-color: #ef4444; background: #fef2f2; }
+        .error { color: #dc2626; text-align: center; margin-top: 10px; min-height: 20px; }
     </style>
 </head>
 <body>
     <div class="container">
-        <!-- PASSWORD SCREEN -->
-        <div class="screen active" id="passwordScreen">
-            <h1>✈️ Aviation Leadership</h1>
+        <div class="screen active" id="consentScreen">
+            <h1>&#9992;&#65039; Aviation Leadership Quiz</h1>
+            <div class="consent-box">
+                <h2>Student Consent &amp; Privacy Notice</h2>
+                <p style="text-align:left;margin-bottom:8px;"><strong>Data Collection:</strong></p>
+                <ul>
+                    <li>Your name (for identification)</li>
+                    <li>Your quiz answers and score</li>
+                    <li>Time taken</li>
+                    <li>IP address and device type (academic integrity)</li>
+                    <li>Timestamp of submission</li>
+                </ul>
+                <p style="text-align:left;margin-top:15px;font-size:14px;"><strong>Purpose:</strong> assessment and academic integrity verification.</p>
+            </div>
+            <button class="name-btn" id="agreeBtn">I Agree &amp; Continue</button>
+        </div>
+
+        <div class="screen" id="passwordScreen">
+            <h1>&#9992;&#65039; Aviation Leadership</h1>
             <p>Enter Quiz Password</p>
             <div class="password-display" id="passwordDisplay">
-                <div class="digit" id="d1"></div>
-                <div class="digit" id="d2"></div>
-                <div class="digit" id="d3"></div>
-                <div class="digit" id="d4"></div>
-                <div class="digit" id="d5"></div>
-                <div class="digit" id="d6"></div>
+                <div class="digit" data-i="1"></div>
+                <div class="digit" data-i="2"></div>
+                <div class="digit" data-i="3"></div>
+                <div class="digit" data-i="4"></div>
+                <div class="digit" data-i="5"></div>
+                <div class="digit" data-i="6"></div>
             </div>
-            <div class="keypad">
-                <button class="btn" onclick="typeDigit(1)">1</button>
-                <button class="btn" onclick="typeDigit(2)">2</button>
-                <button class="btn" onclick="typeDigit(3)">3</button>
-                <button class="btn" onclick="typeDigit(4)">4</button>
-                <button class="btn" onclick="typeDigit(5)">5</button>
-                <button class="btn" onclick="typeDigit(6)">6</button>
-                <button class="btn" onclick="typeDigit(7)">7</button>
-                <button class="btn" onclick="typeDigit(8)">8</button>
-                <button class="btn" onclick="typeDigit(9)">9</button>
-                <button class="btn delete" onclick="deleteDigit()">← Delete</button>
-                <button class="btn" onclick="typeDigit(0)">0</button>
-                <button class="btn submit" onclick="checkPassword()">Check Password</button>
-            </div>
+            <div class="keypad" id="keypad"></div>
+            <div class="error" id="passwordError"></div>
         </div>
 
-        <!-- NAME SCREEN -->
         <div class="screen" id="nameScreen">
-            <h1>✈️ Almost There</h1>
+            <h1>&#9992;&#65039; Almost There</h1>
             <p>Enter Your Name</p>
-            <input type="text" id="studentName" placeholder="Type your name">
-            <button class="name-btn" onclick="goToQuiz()">Begin Quiz</button>
+            <input type="text" id="studentName" placeholder="Type your name" maxlength="120">
+            <button class="name-btn" id="beginBtn">Begin Quiz</button>
+            <div class="error" id="nameError"></div>
         </div>
 
-        <!-- QUIZ SCREEN -->
         <div class="screen" id="quizScreen">
             <div class="quiz-header">
                 <div id="questionCount">1/5</div>
@@ -88,241 +95,231 @@
             </div>
             <div class="question-text" id="questionText"></div>
             <div class="options" id="optionsContainer"></div>
-            <div style="display: flex; gap: 15px; margin-top: 20px;">
-                <button class="submit-btn" id="prevBtn" onclick="previousQuestion()" style="grid-column: auto; width: 48%; background: #8b5cf6;">← Back</button>
-                <button class="submit-btn" id="nextBtn" onclick="nextQuestion()" style="grid-column: auto; width: 48%; background: #7c3aed;">Next →</button>
+            <div class="nav-row">
+                <button class="submit-btn" id="prevBtn" style="background:#8b5cf6;">&larr; Back</button>
+                <button class="submit-btn" id="nextBtn">Next &rarr;</button>
             </div>
-            <button class="submit-btn" id="submitBtn" onclick="submitQuiz()" style="display: none; margin-top: 10px;">Submit Quiz</button>
+            <button class="submit-btn" id="submitBtn" style="display:none;">Submit Quiz</button>
+            <div class="error" id="quizError"></div>
         </div>
 
-        <!-- RESULTS SCREEN -->
         <div class="screen" id="resultsScreen">
-            <h1>Quiz Complete! 🎉</h1>
-            <div class="score" id="scoreDisplay">0/5</div>
-            <div class="results" id="resultsContainer"></div>
-            <button class="name-btn" onclick="location.reload()">Take Another Quiz</button>
+            <h1>Quiz Complete!</h1>
+            <div class="score" id="scoreDisplay">0/0</div>
+            <div id="resultsContainer"></div>
         </div>
     </div>
 
     <script>
-        const SUPABASE_URL = 'https://nvagiezojxixpekknagk.supabase.co';
-        const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52YWdpZXpvanhpeHBla2tuYWdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyOTg4ODUsImV4cCI6MjA5Mzg3NDg4NX0.kYyap46N4BXpA6w0qtA4zskABuX2GHjx77Cu6Zb96j4';
+        // Set this to your Vercel deployment URL after deploying the backend.
+        const API_BASE_URL = window.API_BASE_URL_OVERRIDE || 'REPLACE_WITH_VERCEL_URL';
 
-        let password = '';
-        let currentQuiz = null;
-        let questions = [];
-        let answers = {};
-        let startTime = null;
-        let currentQ = 0;
+        const QUIZ_TIME_SECONDS = 300;
 
-        // Simple fetch-based Supabase client
-        async function fetchSupabase(table, method = 'GET', body = null, query = '') {
-            const headers = {
-                'apikey': SUPABASE_KEY,
-                'Authorization': `Bearer ${SUPABASE_KEY}`,
-                'Content-Type': 'application/json',
-                'Prefer': 'return=representation'
-            };
+        const state = {
+            password: '',
+            sessionToken: null,
+            studentName: '',
+            questions: [],
+            answers: {},
+            startTime: null,
+            currentQ: 0,
+            timerInterval: null,
+            submitting: false
+        };
 
-            let url = `${SUPABASE_URL}/rest/v1/${table}`;
-            if (query) {
-                // Properly encode the query string
-                url += '?' + query;
-            }
+        function $(id) { return document.getElementById(id); }
+        function showScreen(id) {
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            $(id).classList.add('active');
+        }
+        function setError(id, msg) { $(id).textContent = msg || ''; }
 
-            const options = { method, headers };
-            if (body) options.body = JSON.stringify(body);
-
-            try {
-                console.log('[DEBUG] Supabase Request:', { method, url, query });
-                const res = await fetch(url, options);
-                const data = await res.json();
-                console.log('[DEBUG] Supabase Response:', data);
-                return data;
-            } catch (e) {
-                console.error('Fetch error:', e);
-                return [];
-            }
+        function buildKeypad() {
+            const keys = ['1','2','3','4','5','6','7','8','9','del','0','submit'];
+            const keypad = $('keypad');
+            keypad.innerHTML = '';
+            keys.forEach(k => {
+                const b = document.createElement('button');
+                b.className = 'btn';
+                if (k === 'del') { b.classList.add('delete'); b.textContent = '← Delete'; b.onclick = deleteDigit; }
+                else if (k === 'submit') { b.classList.add('submit'); b.textContent = 'Check Password'; b.onclick = checkPassword; b.id = 'pwSubmit'; }
+                else { b.textContent = k; b.onclick = () => typeDigit(k); }
+                keypad.appendChild(b);
+            });
         }
 
-        function typeDigit(digit) {
-            if (password.length < 6) {
-                password += digit;
-                showPassword();
+        function typeDigit(d) {
+            if (state.password.length < 6) {
+                state.password += d;
+                renderPassword();
             }
         }
-
         function deleteDigit() {
-            password = password.slice(0, -1);
-            showPassword();
+            state.password = state.password.slice(0, -1);
+            renderPassword();
         }
-
-        function showPassword() {
-            for (let i = 1; i <= 6; i++) {
-                const el = document.getElementById(`d${i}`);
-                if (i <= password.length) {
-                    el.textContent = '●';
-                    el.classList.add('filled');
-                } else {
-                    el.textContent = '';
-                    el.classList.remove('filled');
-                }
-            }
+        function renderPassword() {
+            document.querySelectorAll('.digit').forEach((el, idx) => {
+                if (idx < state.password.length) { el.textContent = '●'; el.classList.add('filled'); }
+                else { el.textContent = ''; el.classList.remove('filled'); }
+            });
         }
 
         async function checkPassword() {
+            setError('passwordError', '');
+            const submitBtn = $('pwSubmit');
+            submitBtn.disabled = true;
             try {
-                console.log('[DEBUG] Checking password:', password);
-                const data = await fetchSupabase('quizzes', 'GET', null, `password=eq.${password}`);
-                console.log('[DEBUG] Password check result:', data);
-
-                if (data && Array.isArray(data) && data.length > 0) {
-                    console.log('[DEBUG] Password correct! Quiz data:', data[0]);
-                    currentQuiz = data[0];
-                    switchScreen('nameScreen');
-                    document.getElementById('studentName').focus();
+                const r = await fetch(`${API_BASE_URL}/api/validate-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ password: state.password })
+                });
+                const data = await r.json();
+                if (r.ok && data.valid) {
+                    state.sessionToken = data.sessionToken;
+                    showScreen('nameScreen');
+                    $('studentName').focus();
+                } else if (r.status === 429) {
+                    setError('passwordError', data.error || 'Too many attempts. Please wait.');
+                    state.password = '';
+                    renderPassword();
                 } else {
-                    console.log('[DEBUG] Password check failed. Data:', data, 'Is array?', Array.isArray(data));
-                    alert('Wrong password');
-                    password = '';
-                    showPassword();
+                    setError('passwordError', 'Wrong password.');
+                    state.password = '';
+                    renderPassword();
                 }
             } catch (e) {
-                console.error('Password check error:', e);
-                alert('Error checking password: ' + e.message);
+                setError('passwordError', 'Network error. Try again.');
+            } finally {
+                submitBtn.disabled = false;
             }
         }
 
-        function switchScreen(screenId) {
-            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-            document.getElementById(screenId).classList.add('active');
+        async function beginQuiz() {
+            setError('nameError', '');
+            const name = $('studentName').value.trim();
+            if (!name) { setError('nameError', 'Please enter your name.'); return; }
+            state.studentName = name;
+            $('beginBtn').disabled = true;
+            try {
+                const r = await fetch(`${API_BASE_URL}/api/questions`, {
+                    headers: { Authorization: `Bearer ${state.sessionToken}` }
+                });
+                const data = await r.json();
+                if (!r.ok || !data.questions) { setError('nameError', 'Failed to load questions.'); return; }
+                state.questions = data.questions;
+                state.questions.forEach(q => { state.answers[q.id] = null; });
+                state.currentQ = 0;
+                state.startTime = Date.now();
+                showScreen('quizScreen');
+                renderQuestion();
+                startTimer();
+            } catch (e) {
+                setError('nameError', 'Network error. Try again.');
+            } finally {
+                $('beginBtn').disabled = false;
+            }
         }
 
-        async function goToQuiz() {
-            const name = document.getElementById('studentName').value.trim();
-            if (!name) { alert('Please enter your name'); return; }
-
-            window.studentName = name;
-            const data = await fetchSupabase(`questions?quiz_id=eq.${currentQuiz.id}&select=*`);
-            questions = data;
-            questions.forEach(q => { answers[q.id] = null; });
-
-            switchScreen('quizScreen');
-            startTime = Date.now();
-            currentQ = 0;
-            showQuestion();
-            startTimer();
-        }
-
-        function showQuestion() {
-            if (currentQ >= questions.length) currentQ = questions.length - 1;
-            if (currentQ < 0) currentQ = 0;
-
-            const q = questions[currentQ];
-            document.getElementById('questionCount').textContent = `${currentQ + 1}/${questions.length}`;
-            document.getElementById('questionText').textContent = `Q${currentQ + 1}: ${q.question_text}`;
-
-            let html = '';
-            ['A', 'B', 'C', 'D'].forEach(letter => {
+        function renderQuestion() {
+            const q = state.questions[state.currentQ];
+            $('questionCount').textContent = `${state.currentQ + 1}/${state.questions.length}`;
+            $('questionText').textContent = `Q${state.currentQ + 1}: ${q.question_text}`;
+            const container = $('optionsContainer');
+            container.innerHTML = '';
+            ['A','B','C','D'].forEach(letter => {
                 const opt = q[`option_${letter.toLowerCase()}`];
-                const selected = answers[q.id] === letter;
-                html += `<div class="option ${selected ? 'selected' : ''}" onclick="selectAnswer(${q.id}, '${letter}')">
-                    <input type="radio" name="q" value="${letter}" ${selected ? 'checked' : ''}>
-                    <span>${opt}</span>
-                </div>`;
+                if (!opt) return;
+                const div = document.createElement('div');
+                div.className = 'option' + (state.answers[q.id] === letter ? ' selected' : '');
+                div.innerHTML = `<input type="radio" name="q${q.id}" ${state.answers[q.id] === letter ? 'checked' : ''}><span></span>`;
+                div.querySelector('span').textContent = `${letter}. ${opt}`;
+                div.onclick = () => { state.answers[q.id] = letter; renderQuestion(); };
+                container.appendChild(div);
             });
-            document.getElementById('optionsContainer').innerHTML = html;
-
-            // Update button visibility
-            document.getElementById('prevBtn').style.display = currentQ === 0 ? 'none' : 'block';
-            document.getElementById('nextBtn').style.display = currentQ === questions.length - 1 ? 'none' : 'block';
-            document.getElementById('submitBtn').style.display = currentQ === questions.length - 1 ? 'block' : 'none';
-        }
-
-        function selectAnswer(qId, letter) {
-            answers[qId] = letter;
-            showQuestion();
-        }
-
-        function nextQuestion() {
-            currentQ++;
-            showQuestion();
-        }
-
-        function previousQuestion() {
-            currentQ--;
-            showQuestion();
+            $('prevBtn').style.display = state.currentQ === 0 ? 'none' : 'block';
+            const isLast = state.currentQ === state.questions.length - 1;
+            $('nextBtn').style.display = isLast ? 'none' : 'block';
+            $('submitBtn').style.display = isLast ? 'block' : 'none';
         }
 
         function startTimer() {
-            const interval = setInterval(() => {
-                const elapsed = Math.floor((Date.now() - startTime) / 1000);
-                const remaining = Math.max(0, 300 - elapsed);
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            state.timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - state.startTime) / 1000);
+                const remaining = Math.max(0, QUIZ_TIME_SECONDS - elapsed);
                 const m = Math.floor(remaining / 60);
                 const s = remaining % 60;
-                document.getElementById('timer').textContent = `${m}:${s.toString().padStart(2, '0')}`;
-                if (remaining < 60) document.getElementById('timer').classList.add('warning');
-                if (remaining === 0) { clearInterval(interval); submitQuiz(); }
+                $('timer').textContent = `${m}:${s.toString().padStart(2, '0')}`;
+                if (remaining < 60) $('timer').classList.add('warning');
+                if (remaining === 0) { clearInterval(state.timerInterval); submitQuiz(); }
             }, 1000);
         }
 
         async function submitQuiz() {
-            let correct = 0;
-            const results = [];
-
-            // Count correct answers first
-            for (let q of questions) {
-                const ans = answers[q.id];
-                if (ans === q.correct_answer) correct++;
-                results.push({
-                    question: q.question_text,
-                    studentAnswer: ans,
-                    correct: q.correct_answer,
-                    isCorrect: ans === q.correct_answer,
-                    options: { A: q.option_a, B: q.option_b, C: q.option_c, D: q.option_d }
+            if (state.submitting) return;
+            state.submitting = true;
+            if (state.timerInterval) clearInterval(state.timerInterval);
+            $('submitBtn').disabled = true;
+            setError('quizError', '');
+            const deviceType = /mobile|android|iphone|ipad/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
+            const timeTaken = Math.floor((Date.now() - state.startTime) / 1000);
+            try {
+                const r = await fetch(`${API_BASE_URL}/api/submit-quiz`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionToken: state.sessionToken,
+                        studentName: state.studentName,
+                        answers: state.answers,
+                        timeTaken,
+                        deviceType
+                    })
                 });
-            }
-
-            // Save submission ONCE
-            const sub = await fetchSupabase('submissions', 'POST', {
-                quiz_id: currentQuiz.id,
-                student_name: window.studentName,
-                student_email: null,
-                time_taken_seconds: Math.floor((Date.now() - startTime) / 1000),
-                total_questions: questions.length,
-                score: correct
-            });
-
-            console.log('[DEBUG] Submission response:', sub);
-
-            // Save individual answers
-            if (sub && sub[0]) {
-                for (let i = 0; i < questions.length; i++) {
-                    const q = questions[i];
-                    const ans = answers[q.id];
-                    await fetchSupabase('student_answers', 'POST', {
-                        submission_id: sub[0].id,
-                        question_id: q.id,
-                        student_answer: ans,
-                        is_correct: results[i].isCorrect
-                    });
+                const data = await r.json();
+                if (!r.ok || !data.success) {
+                    setError('quizError', data.error || 'Submission failed.');
+                    state.submitting = false;
+                    $('submitBtn').disabled = false;
+                    return;
                 }
+                showScreen('resultsScreen');
+                $('scoreDisplay').textContent = `${data.score} / ${data.totalQuestions}`;
+                const container = $('resultsContainer');
+                container.innerHTML = '';
+                data.results.forEach((res, i) => {
+                    const q = state.questions.find(x => String(x.id) === String(res.questionId));
+                    const div = document.createElement('div');
+                    div.className = 'result-item ' + (res.isCorrect ? 'correct' : 'incorrect');
+                    const studentText = res.studentAnswer ? `${res.studentAnswer}. ${q[`option_${res.studentAnswer.toLowerCase()}`] || ''}` : 'Not answered';
+                    const correctText = `${res.correctAnswer}. ${q[`option_${res.correctAnswer.toLowerCase()}`] || ''}`;
+                    const head = document.createElement('strong');
+                    head.textContent = `Q${i + 1}: ${q.question_text}`;
+                    div.appendChild(head);
+                    div.appendChild(document.createElement('br'));
+                    div.appendChild(document.createTextNode(`Your answer: ${studentText}`));
+                    div.appendChild(document.createElement('br'));
+                    div.appendChild(document.createTextNode(`Correct: ${correctText}`));
+                    container.appendChild(div);
+                });
+            } catch (e) {
+                setError('quizError', 'Network error submitting quiz.');
+                state.submitting = false;
+                $('submitBtn').disabled = false;
             }
-
-            switchScreen('resultsScreen');
-            document.getElementById('scoreDisplay').textContent = `${correct} / ${questions.length}`;
-
-            let html = '';
-            results.forEach((r, i) => {
-                const cls = r.isCorrect ? 'correct' : 'incorrect';
-                html += `<div class="result-item ${cls}">
-                    <strong>Q${i + 1}: ${r.question}</strong><br>
-                    Your answer: ${r.studentAnswer || 'Not answered'} - ${r.options[r.studentAnswer] || ''}<br>
-                    Correct: ${r.correct} - ${r.options[r.correct]}
-                </div>`;
-            });
-            document.getElementById('resultsContainer').innerHTML = html;
         }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            buildKeypad();
+            $('agreeBtn').onclick = () => showScreen('passwordScreen');
+            $('beginBtn').onclick = beginQuiz;
+            $('prevBtn').onclick = () => { state.currentQ--; renderQuestion(); };
+            $('nextBtn').onclick = () => { state.currentQ++; renderQuestion(); };
+            $('submitBtn').onclick = submitQuiz;
+            $('studentName').addEventListener('keydown', e => { if (e.key === 'Enter') beginQuiz(); });
+        });
     </script>
 </body>
 </html>

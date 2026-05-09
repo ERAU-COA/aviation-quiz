@@ -1,0 +1,40 @@
+import jwt from 'jsonwebtoken';
+import { getSupabase, getClientIp, applyCors, getActiveQuizId } from './_lib.js';
+
+export default async function handler(req, res) {
+  if (applyCors(req, res)) return;
+  if (req.method !== 'GET') return res.status(405).json({ error: 'Method not allowed' });
+
+  const auth = req.headers.authorization || '';
+  if (!auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Missing token' });
+
+  try {
+    jwt.verify(auth.slice(7), process.env.JWT_SECRET);
+  } catch {
+    return res.status(401).json({ error: 'Invalid or expired session' });
+  }
+
+  const supabase = getSupabase();
+  const ip = getClientIp(req);
+
+  try {
+    const quizId = await getActiveQuizId(supabase);
+    const { data: questions, error } = await supabase
+      .from('questions')
+      .select('id, question_text, option_a, option_b, option_c, option_d')
+      .eq('quiz_id', quizId)
+      .order('id', { ascending: true });
+    if (error) throw error;
+
+    await supabase.from('audit_log').insert({
+      event_type: 'questions_retrieved',
+      ip_address: ip,
+      event_data: { count: questions.length }
+    });
+
+    return res.status(200).json({ success: true, questions, totalQuestions: questions.length });
+  } catch (e) {
+    console.error('questions error:', e);
+    return res.status(500).json({ error: 'Internal server error', message: e.message });
+  }
+}

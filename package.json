@@ -1,0 +1,13 @@
+{
+  "name": "aviation-quiz-backend",
+  "version": "1.0.0",
+  "description": "Secure backend for aviation leadership quiz",
+  "type": "module",
+  "dependencies": {
+    "@supabase/supabase-js": "^2.38.0",
+    "jsonwebtoken": "^9.0.2"
+  },
+  "engines": {
+    "node": "18.x"
+  }
+}
