@@ -34,19 +34,20 @@ export default async function handler(req, res) {
       if (req.method === 'GET') {
         const { data, error } = await supabase
           .from('quizzes')
-          .select('id, title, description, password, time_limit_minutes, week_number, mode, status')
+          .select('id, title, description, password, time_limit_minutes, timer_enabled, week_number, mode, status')
           .eq('id', quizId)
           .single();
         if (error) throw error;
         return res.status(200).json({ quiz: data });
       }
       if (req.method === 'PUT') {
-        const { title, description, password, time_limit_minutes, mode } = req.body || {};
+        const { title, description, password, time_limit_minutes, timer_enabled, mode } = req.body || {};
         const update = {};
         if (typeof title === 'string') update.title = title.slice(0, 200);
         if (typeof description === 'string') update.description = description.slice(0, 1000);
         if (typeof password === 'string' && password.length > 0) update.password = password.slice(0, 100);
         if (Number.isFinite(Number(time_limit_minutes))) update.time_limit_minutes = Math.max(1, Math.floor(Number(time_limit_minutes)));
+        if (typeof timer_enabled === 'boolean') update.timer_enabled = timer_enabled;
         if (mode === 'password' || mode === 'sync') {
           update.mode = mode;
           if (mode === 'password') update.status = 'inactive';

@@ -176,6 +176,22 @@
                     <div class="error" id="modeError"></div>
                 </div>
 
+                <div class="card">
+                    <h2>Quiz Timer</h2>
+                    <div class="row" style="margin-bottom: 16px;">
+                        <label style="display: flex; gap: 10px; align-items: center; cursor: pointer; min-width: auto;">
+                            <input type="checkbox" id="timerEnabledToggle" style="width: 18px; height: 18px;">
+                            <strong>Enable timer</strong>
+                        </label>
+                    </div>
+                    <div class="row" id="timerMinutesRow">
+                        <label>Time limit (minutes):</label>
+                        <input type="number" id="timerMinutesInput" min="1" max="180" style="max-width: 100px;">
+                        <button id="saveTimerBtn">Save</button>
+                    </div>
+                    <div class="error" id="timerError"></div>
+                </div>
+
                 <div class="card" id="syncControls" style="display: none;">
                     <h2>Synchronous Session</h2>
                     <div class="row" style="margin-bottom: 16px;">
@@ -515,6 +531,9 @@
                 currentMode = data.quiz?.mode || 'password';
                 currentStatus = data.quiz?.status || 'inactive';
                 document.querySelector(`input[name=mode][value=${currentMode}]`).checked = true;
+                $('timerEnabledToggle').checked = data.quiz?.timer_enabled !== false;
+                $('timerMinutesInput').value = data.quiz?.time_limit_minutes ?? 5;
+                $('timerMinutesRow').style.opacity = $('timerEnabledToggle').checked ? '1' : '0.5';
                 renderModeUI();
                 if (currentMode === 'sync') {
                     refreshWaitingRoom();
@@ -522,6 +541,23 @@
                 }
             } catch (e) {
                 $('modeError').textContent = e.message;
+            }
+        }
+
+        async function saveTimer() {
+            $('timerError').textContent = '';
+            const enabled = $('timerEnabledToggle').checked;
+            const minutes = Math.max(1, Math.min(180, parseInt($('timerMinutesInput').value, 10) || 5));
+            try {
+                await api('/api/instructor?action=quiz', {
+                    method: 'PUT',
+                    body: JSON.stringify({ timer_enabled: enabled, time_limit_minutes: minutes })
+                });
+                $('timerError').style.color = '#6ee7b7';
+                $('timerError').textContent = 'Saved.';
+                setTimeout(() => { $('timerError').textContent = ''; $('timerError').style.color = ''; }, 1500);
+            } catch (e) {
+                $('timerError').textContent = e.message;
             }
         }
 
@@ -649,6 +685,8 @@
             $('refreshSubsBtn').onclick = loadSubmissions;
             $('refreshStatsBtn').onclick = loadStats;
             document.querySelectorAll('input[name=mode]').forEach(r => r.onchange = (e) => setMode(e.target.value));
+            $('timerEnabledToggle').onchange = () => { $('timerMinutesRow').style.opacity = $('timerEnabledToggle').checked ? '1' : '0.5'; };
+            $('saveTimerBtn').onclick = saveTimer;
             $('openWaitingBtn').onclick = () => setStatus('waiting');
             $('beginQuizBtn').onclick = () => setStatus('active');
             $('endQuizBtn').onclick = () => setStatus('ended');

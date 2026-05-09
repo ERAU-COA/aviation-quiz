@@ -19,6 +19,11 @@ export default async function handler(req, res) {
 
   try {
     const quizId = await getActiveQuizId(supabase);
+    const { data: quiz } = await supabase
+      .from('quizzes')
+      .select('time_limit_minutes, timer_enabled')
+      .eq('id', quizId)
+      .single();
     const { data: questions, error } = await supabase
       .from('questions')
       .select('id, question_text, option_a, option_b, option_c, option_d')
@@ -32,7 +37,13 @@ export default async function handler(req, res) {
       event_data: { count: questions.length }
     });
 
-    return res.status(200).json({ success: true, questions, totalQuestions: questions.length });
+    return res.status(200).json({
+      success: true,
+      questions,
+      totalQuestions: questions.length,
+      timerEnabled: quiz?.timer_enabled !== false,
+      timeLimitSeconds: Math.max(60, Math.floor((quiz?.time_limit_minutes ?? 5) * 60))
+    });
   } catch (e) {
     console.error('questions error:', e);
     return res.status(500).json({ error: 'Internal server error', message: e.message });
