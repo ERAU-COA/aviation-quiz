@@ -33,7 +33,10 @@ export default async function handler(req, res) {
     }
 
     const quizId = await getActiveQuizId(supabase);
-    const { data: quiz } = await supabase.from('quizzes').select('password').eq('id', quizId).single();
+    const { data: quiz } = await supabase.from('quizzes').select('password, mode').eq('id', quizId).single();
+    if (quiz?.mode === 'sync') {
+      return res.status(400).json({ valid: false, error: 'Quiz is in synchronous mode. Please wait for instructor.' });
+    }
     const expectedPassword = quiz?.password ?? process.env.QUIZ_PASSWORD;
 
     if (typeof password !== 'string' || password !== expectedPassword) {

@@ -91,37 +91,41 @@
                 <button class="tab" data-tab="questions">Questions</button>
                 <button class="tab" data-tab="submissions">Submissions</button>
                 <button class="tab" data-tab="stats">Class Performance</button>
+                <button class="tab" data-tab="settings">Settings</button>
             </div>
 
             <div class="panel active" id="panel-qr">
-                <div class="card">
-                    <h2>Quiz URL</h2>
-                    <div class="field">
-                        <label for="quizUrl">Students will scan this QR code to reach the quiz:</label>
-                        <input type="url" id="quizUrl" class="url-input" value="https://erau-coa.github.io/aviation-quiz/">
-                    </div>
-                    <button id="regenQrBtn">Update QR</button>
-                </div>
                 <div class="card" style="text-align: center;">
-                    <div class="qr-box" id="qrBox"></div>
-                    <p class="muted" style="margin-top: 12px;" id="qrUrlText"></p>
+                    <h2 style="font-size: 28px; margin-bottom: 24px;">Scan to Join</h2>
+                    <div class="qr-box" id="qrBox" style="padding: 32px;"></div>
+                    <p class="muted" style="margin-top: 16px; font-size: 14px;" id="qrUrlText"></p>
                 </div>
+                <details style="margin-top: 16px;">
+                    <summary class="muted" style="cursor: pointer;">URL settings</summary>
+                    <div class="card" style="margin-top: 12px;">
+                        <div class="field">
+                            <input type="url" id="quizUrl" class="url-input" value="https://erau-coa.github.io/aviation-quiz/">
+                        </div>
+                        <button id="regenQrBtn">Update QR</button>
+                    </div>
+                </details>
             </div>
 
             <div class="panel" id="panel-passcode">
-                <div class="card">
-                    <h2>Current Passcode</h2>
-                    <p class="muted" style="margin-bottom: 16px;">Show this to your students. They will type this on the quiz page.</p>
-                    <div class="pwd-display" id="pwdDisplay">------</div>
-                    <div style="margin-top: 20px;">
-                        <h2 style="margin-top: 24px;">Change Passcode</h2>
+                <div class="card" style="text-align: center;">
+                    <h2 style="font-size: 28px; margin-bottom: 24px;">Quiz Password</h2>
+                    <div class="pwd-display" id="pwdDisplay" style="font-size: 96px; letter-spacing: 12px; padding: 32px 48px;">------</div>
+                </div>
+                <details style="margin-top: 16px;">
+                    <summary class="muted" style="cursor: pointer;">Change passcode</summary>
+                    <div class="card" style="margin-top: 12px;">
                         <div class="row">
                             <input type="text" id="newPwdInput" placeholder="New passcode" style="max-width: 280px;">
                             <button id="savePwdBtn">Save</button>
                         </div>
                         <div class="error" id="pwdError"></div>
                     </div>
-                </div>
+                </details>
             </div>
 
             <div class="panel" id="panel-questions">
@@ -148,6 +152,49 @@
                 </div>
                 <div id="statsBody"></div>
             </div>
+
+            <div class="panel" id="panel-settings">
+                <div class="card">
+                    <h2>Quiz Mode</h2>
+                    <p class="muted" style="margin-bottom: 16px;">Choose how students access the quiz.</p>
+                    <div class="row" style="gap: 12px; flex-direction: column; align-items: stretch;">
+                        <label style="display: flex; gap: 12px; padding: 14px; background: #0f172a; border: 2px solid #334155; border-radius: 8px; cursor: pointer;" id="modePasswordOpt">
+                            <input type="radio" name="mode" value="password" style="width: auto; margin-top: 4px;">
+                            <div style="flex: 1;">
+                                <strong>Password mode</strong>
+                                <p class="muted" style="margin-top: 4px; font-size: 13px;">Students enter the quiz on their own using the passcode. Self-paced — start whenever they want.</p>
+                            </div>
+                        </label>
+                        <label style="display: flex; gap: 12px; padding: 14px; background: #0f172a; border: 2px solid #334155; border-radius: 8px; cursor: pointer;" id="modeSyncOpt">
+                            <input type="radio" name="mode" value="sync" style="width: auto; margin-top: 4px;">
+                            <div style="flex: 1;">
+                                <strong>Synchronous mode</strong>
+                                <p class="muted" style="margin-top: 4px; font-size: 13px;">Students join a waiting room. You see who's in. Click "Begin" and everyone starts at the same time.</p>
+                            </div>
+                        </label>
+                    </div>
+                    <div class="error" id="modeError"></div>
+                </div>
+
+                <div class="card" id="syncControls" style="display: none;">
+                    <h2>Synchronous Session</h2>
+                    <div class="row" style="margin-bottom: 16px;">
+                        <span class="muted">Status:</span>
+                        <strong id="syncStatusBadge" style="padding: 4px 10px; background: #334155; border-radius: 4px;">Inactive</strong>
+                    </div>
+                    <div class="actions" style="margin-bottom: 16px;">
+                        <button id="openWaitingBtn">Open Waiting Room</button>
+                        <button id="beginQuizBtn" disabled>Begin Quiz</button>
+                        <button class="secondary" id="endQuizBtn" disabled>End Quiz</button>
+                        <button class="secondary" id="resetSessionBtn">Reset</button>
+                    </div>
+                    <div>
+                        <h2 style="margin-top: 8px;">Waiting Room <span class="muted" id="waitingRoomCount" style="font-size: 14px;">(0)</span></h2>
+                        <p class="muted" style="font-size: 12px; margin-bottom: 12px;">Auto-refreshes every 3 seconds when status is Waiting.</p>
+                        <div id="waitingRoomList" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px;"></div>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -159,6 +206,9 @@
         let token = sessionStorage.getItem(TOKEN_KEY) || null;
         let questionsCache = [];
         let editingQuestionId = null;
+        let waitingRoomPoll = null;
+        let currentMode = 'password';
+        let currentStatus = 'inactive';
 
         async function api(path, opts = {}) {
             const headers = Object.assign({ 'Content-Type': 'application/json' }, opts.headers || {});
@@ -215,6 +265,7 @@
             sessionStorage.removeItem(TOKEN_KEY);
             token = null;
             $('codeInput').value = '';
+            stopWaitingRoomPoll();
             showLogin();
         }
 
@@ -225,6 +276,8 @@
             if (name === 'questions') loadQuestions();
             if (name === 'submissions') loadSubmissions();
             if (name === 'stats') loadStats();
+            if (name === 'settings') loadSettings();
+            if (name !== 'settings') stopWaitingRoomPoll();
         }
 
         function drawQR() {
@@ -456,6 +509,101 @@
             return String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' })[c]);
         }
 
+        async function loadSettings() {
+            try {
+                const data = await api('/api/instructor?action=quiz');
+                currentMode = data.quiz?.mode || 'password';
+                currentStatus = data.quiz?.status || 'inactive';
+                document.querySelector(`input[name=mode][value=${currentMode}]`).checked = true;
+                renderModeUI();
+                if (currentMode === 'sync') {
+                    refreshWaitingRoom();
+                    if (currentStatus === 'waiting') startWaitingRoomPoll();
+                }
+            } catch (e) {
+                $('modeError').textContent = e.message;
+            }
+        }
+
+        function renderModeUI() {
+            const sync = currentMode === 'sync';
+            $('syncControls').style.display = sync ? 'block' : 'none';
+            const badge = $('syncStatusBadge');
+            badge.textContent = currentStatus.charAt(0).toUpperCase() + currentStatus.slice(1);
+            const colors = { inactive: '#334155', waiting: '#d97706', active: '#059669', ended: '#7c3aed' };
+            badge.style.background = colors[currentStatus] || '#334155';
+            $('openWaitingBtn').disabled = !(currentStatus === 'inactive' || currentStatus === 'ended');
+            $('beginQuizBtn').disabled = currentStatus !== 'waiting';
+            $('endQuizBtn').disabled = !(currentStatus === 'waiting' || currentStatus === 'active');
+        }
+
+        async function setMode(mode) {
+            $('modeError').textContent = '';
+            try {
+                await api('/api/instructor?action=quiz', {
+                    method: 'PUT',
+                    body: JSON.stringify({ mode })
+                });
+                currentMode = mode;
+                if (mode === 'password') currentStatus = 'inactive';
+                renderModeUI();
+                stopWaitingRoomPoll();
+                if (mode === 'sync') refreshWaitingRoom();
+            } catch (e) {
+                $('modeError').textContent = e.message;
+            }
+        }
+
+        async function setStatus(status) {
+            try {
+                await api('/api/instructor?action=set-status', {
+                    method: 'PUT',
+                    body: JSON.stringify({ status })
+                });
+                currentStatus = status;
+                renderModeUI();
+                if (status === 'waiting') {
+                    refreshWaitingRoom();
+                    startWaitingRoomPoll();
+                } else {
+                    stopWaitingRoomPoll();
+                    refreshWaitingRoom();
+                }
+            } catch (e) {
+                $('modeError').textContent = e.message;
+            }
+        }
+
+        async function refreshWaitingRoom() {
+            try {
+                const data = await api('/api/instructor?action=waiting-room');
+                const list = $('waitingRoomList');
+                const students = data.students || [];
+                $('waitingRoomCount').textContent = `(${students.length})`;
+                if (!students.length) {
+                    list.innerHTML = '<p class="muted" style="grid-column: 1/-1;">No students yet.</p>';
+                } else {
+                    list.innerHTML = '';
+                    students.forEach(s => {
+                        const div = document.createElement('div');
+                        div.style.cssText = 'background: #0f172a; border: 1px solid #334155; padding: 10px 12px; border-radius: 6px; font-size: 14px;';
+                        div.textContent = s.student_name;
+                        list.appendChild(div);
+                    });
+                }
+            } catch (e) {
+                console.error('refreshWaitingRoom error', e);
+            }
+        }
+
+        function startWaitingRoomPoll() {
+            stopWaitingRoomPoll();
+            waitingRoomPoll = setInterval(refreshWaitingRoom, 3000);
+        }
+        function stopWaitingRoomPoll() {
+            if (waitingRoomPoll) { clearInterval(waitingRoomPoll); waitingRoomPoll = null; }
+        }
+
         async function loadStats() {
             const body = $('statsBody');
             body.innerHTML = '<p class="muted">Loading...</p>';
@@ -500,6 +648,11 @@
             $('addQuestionBtn').onclick = () => openQuestionEditor(null);
             $('refreshSubsBtn').onclick = loadSubmissions;
             $('refreshStatsBtn').onclick = loadStats;
+            document.querySelectorAll('input[name=mode]').forEach(r => r.onchange = (e) => setMode(e.target.value));
+            $('openWaitingBtn').onclick = () => setStatus('waiting');
+            $('beginQuizBtn').onclick = () => setStatus('active');
+            $('endQuizBtn').onclick = () => setStatus('ended');
+            $('resetSessionBtn').onclick = () => setStatus('inactive');
             document.querySelectorAll('.tab').forEach(t => t.onclick = () => switchTab(t.dataset.tab));
 
             if (token) showPortal();

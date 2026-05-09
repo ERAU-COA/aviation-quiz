@@ -34,21 +34,60 @@ export default async function handler(req, res) {
       if (req.method === 'GET') {
         const { data, error } = await supabase
           .from('quizzes')
-          .select('id, title, description, password, time_limit_minutes, week_number')
+          .select('id, title, description, password, time_limit_minutes, week_number, mode, status')
           .eq('id', quizId)
           .single();
         if (error) throw error;
         return res.status(200).json({ quiz: data });
       }
       if (req.method === 'PUT') {
-        const { title, description, password, time_limit_minutes } = req.body || {};
+        const { title, description, password, time_limit_minutes, mode } = req.body || {};
         const update = {};
         if (typeof title === 'string') update.title = title.slice(0, 200);
         if (typeof description === 'string') update.description = description.slice(0, 1000);
         if (typeof password === 'string' && password.length > 0) update.password = password.slice(0, 100);
         if (Number.isFinite(Number(time_limit_minutes))) update.time_limit_minutes = Math.max(1, Math.floor(Number(time_limit_minutes)));
+        if (mode === 'password' || mode === 'sync') {
+          update.mode = mode;
+          if (mode === 'password') update.status = 'inactive';
+        }
         if (Object.keys(update).length === 0) return res.status(400).json({ error: 'No fields to update' });
         const { error } = await supabase.from('quizzes').update(update).eq('id', quizId);
+        if (error) throw error;
+        if (mode === 'password') {
+          await supabase.from('waiting_room').delete().eq('quiz_id', quizId);
+        }
+        return res.status(200).json({ success: true });
+      }
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    if (action === 'set-status') {
+      if (req.method !== 'PUT') return res.status(405).json({ error: 'Method not allowed' });
+      const { status } = req.body || {};
+      if (!['inactive', 'waiting', 'active', 'ended'].includes(status)) {
+        return res.status(400).json({ error: 'Invalid status' });
+      }
+      const { error } = await supabase.from('quizzes').update({ status }).eq('id', quizId);
+      if (error) throw error;
+      if (status === 'inactive') {
+        await supabase.from('waiting_room').delete().eq('quiz_id', quizId);
+      }
+      return res.status(200).json({ success: true });
+    }
+
+    if (action === 'waiting-room') {
+      if (req.method === 'GET') {
+        const { data, error } = await supabase
+          .from('waiting_room')
+          .select('id, student_name, device_id, joined_at')
+          .eq('quiz_id', quizId)
+          .order('joined_at', { ascending: true });
+        if (error) throw error;
+        return res.status(200).json({ students: data });
+      }
+      if (req.method === 'DELETE') {
+        const { error } = await supabase.from('waiting_room').delete().eq('quiz_id', quizId);
         if (error) throw error;
         return res.status(200).json({ success: true });
       }

@@ -58,6 +58,21 @@
             <p style="margin-bottom: 20px;">Our records show this device has already completed the quiz. If you believe this is an error, contact your instructor.</p>
         </div>
 
+        <div class="screen" id="sessionClosedScreen">
+            <h1>&#9992;&#65039; Quiz Closed</h1>
+            <p id="sessionClosedMessage" style="margin-bottom: 20px;">The quiz session is not currently open. Please wait for your instructor.</p>
+        </div>
+
+        <div class="screen" id="waitingRoomScreen">
+            <h1>&#9992;&#65039; Waiting Room</h1>
+            <p style="margin-bottom: 20px;">You're checked in. The quiz will start when your instructor begins.</p>
+            <div style="text-align: center; margin: 30px 0;">
+                <div style="display: inline-block; width: 60px; height: 60px; border: 4px solid #e0e7ff; border-top-color: #1e40af; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            </div>
+            <p style="text-align: center; color: #666;" id="waitingStudentName"></p>
+            <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
+        </div>
+
         <div class="screen" id="consentScreen">
             <h1>&#9992;&#65039; Aviation Leadership Quiz</h1>
             <div class="consent-box">
@@ -129,6 +144,7 @@
         const QUIZ_TIME_SECONDS = 300;
         const SUBMITTED_FLAG = 'aviationQuiz.submitted';
         const DEVICE_ID_KEY = 'aviationQuiz.deviceId';
+        const STATUS_POLL_MS = 2500;
 
         async function getAudioFingerprint() {
             try {
@@ -229,7 +245,10 @@
             timerInterval: null,
             submitting: false,
             deviceId: getOrCreateDeviceId(),
-            browserFingerprint: null
+            browserFingerprint: null,
+            mode: 'password',
+            quizStatus: 'inactive',
+            statusPoll: null
         };
 
         computeBrowserFingerprint().then(fp => { state.browserFingerprint = fp; }).catch(() => {});
@@ -310,20 +329,32 @@
             state.studentName = name;
             $('beginBtn').disabled = true;
             try {
-                const r = await fetch(`${API_BASE_URL}/api/questions`, {
-                    headers: { Authorization: `Bearer ${state.sessionToken}` }
-                });
-                const data = await r.json();
-                if (!r.ok || !data.questions) { setError('nameError', 'Failed to load questions.'); return; }
-                state.questions = data.questions;
-                state.questions.forEach(q => { state.answers[q.id] = null; });
-                state.currentQ = 0;
-                state.startTime = Date.now();
-                showScreen('quizScreen');
-                renderQuestion();
-                startTimer();
+                if (state.mode === 'sync') {
+                    const status = await joinWaitingRoom(name);
+                    state.quizStatus = status;
+                    document.getElementById('waitingStudentName').textContent = `Checked in as: ${name}`;
+                    if (status === 'active') {
+                        await loadQuestionsAndStart();
+                    } else {
+                        showScreen('waitingRoomScreen');
+                        startQuizStatusPolling();
+                    }
+                } else {
+                    const r = await fetch(`${API_BASE_URL}/api/questions`, {
+                        headers: { Authorization: `Bearer ${state.sessionToken}` }
+                    });
+                    const data = await r.json();
+                    if (!r.ok || !data.questions) { setError('nameError', 'Failed to load questions.'); return; }
+                    state.questions = data.questions;
+                    state.questions.forEach(q => { state.answers[q.id] = null; });
+                    state.currentQ = 0;
+                    state.startTime = Date.now();
+                    showScreen('quizScreen');
+                    renderQuestion();
+                    startTimer();
+                }
             } catch (e) {
-                setError('nameError', 'Network error. Try again.');
+                setError('nameError', e.message || 'Network error. Try again.');
             } finally {
                 $('beginBtn').disabled = false;
             }
@@ -428,11 +459,17 @@
             }
         }
 
+        async function fetchQuizStatus() {
+            const r = await fetch(`${API_BASE_URL}/api/check-status?deviceId=${encodeURIComponent(state.deviceId)}`);
+            return await r.json();
+        }
+
         async function checkSubmissionStatus() {
             showScreen('loadingScreen');
             try {
-                const r = await fetch(`${API_BASE_URL}/api/check-status?deviceId=${encodeURIComponent(state.deviceId)}`);
-                const data = await r.json();
+                const data = await fetchQuizStatus();
+                state.mode = data.mode || 'password';
+                state.quizStatus = data.status || 'inactive';
                 if (data.alreadySubmitted) {
                     try { localStorage.setItem(SUBMITTED_FLAG, '1'); } catch (e) {}
                     showScreen('alreadySubmittedScreen');
@@ -448,9 +485,86 @@
             }
         }
 
+        function afterConsent() {
+            if (state.mode === 'sync') {
+                if (state.quizStatus === 'inactive') {
+                    document.getElementById('sessionClosedMessage').textContent = 'The quiz session is not yet open. Please wait for your instructor.';
+                    showScreen('sessionClosedScreen');
+                    return;
+                }
+                if (state.quizStatus === 'ended') {
+                    document.getElementById('sessionClosedMessage').textContent = 'This quiz session has ended.';
+                    showScreen('sessionClosedScreen');
+                    return;
+                }
+                showScreen('nameScreen');
+            } else {
+                showScreen('passwordScreen');
+            }
+        }
+
+        async function joinWaitingRoom(name) {
+            const r = await fetch(`${API_BASE_URL}/api/join-waiting-room`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ studentName: name, deviceId: state.deviceId })
+            });
+            const data = await r.json();
+            if (!r.ok || !data.valid) {
+                throw new Error(data.message || data.error || 'Could not join waiting room');
+            }
+            state.sessionToken = data.sessionToken;
+            return data.status;
+        }
+
+        function startQuizStatusPolling() {
+            stopQuizStatusPolling();
+            state.statusPoll = setInterval(async () => {
+                try {
+                    const data = await fetchQuizStatus();
+                    state.quizStatus = data.status;
+                    if (data.status === 'active') {
+                        stopQuizStatusPolling();
+                        await loadQuestionsAndStart();
+                    } else if (data.status === 'ended') {
+                        stopQuizStatusPolling();
+                        document.getElementById('sessionClosedMessage').textContent = 'The quiz session has ended.';
+                        showScreen('sessionClosedScreen');
+                    } else if (data.status === 'inactive') {
+                        stopQuizStatusPolling();
+                        document.getElementById('sessionClosedMessage').textContent = 'The instructor reset the session.';
+                        showScreen('sessionClosedScreen');
+                    }
+                } catch (e) {}
+            }, STATUS_POLL_MS);
+        }
+
+        function stopQuizStatusPolling() {
+            if (state.statusPoll) { clearInterval(state.statusPoll); state.statusPoll = null; }
+        }
+
+        async function loadQuestionsAndStart() {
+            try {
+                const r = await fetch(`${API_BASE_URL}/api/questions`, {
+                    headers: { Authorization: `Bearer ${state.sessionToken}` }
+                });
+                const data = await r.json();
+                if (!r.ok || !data.questions) throw new Error('Failed to load questions');
+                state.questions = data.questions;
+                state.questions.forEach(q => { state.answers[q.id] = null; });
+                state.currentQ = 0;
+                state.startTime = Date.now();
+                showScreen('quizScreen');
+                renderQuestion();
+                startTimer();
+            } catch (e) {
+                alert('Error starting quiz: ' + e.message);
+            }
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             buildKeypad();
-            $('agreeBtn').onclick = () => showScreen('passwordScreen');
+            $('agreeBtn').onclick = afterConsent;
             $('beginBtn').onclick = beginQuiz;
             $('prevBtn').onclick = () => { state.currentQ--; renderQuestion(); };
             $('nextBtn').onclick = () => { state.currentQ++; renderQuestion(); };
