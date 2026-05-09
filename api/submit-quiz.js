@@ -7,9 +7,12 @@ export default async function handler(req, res) {
   if (applyCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { sessionToken, studentName, answers, timeTaken, deviceType } = req.body || {};
+  const { sessionToken, studentName, answers, timeTaken, deviceType, deviceId } = req.body || {};
   if (!sessionToken || !studentName || !answers || typeof answers !== 'object') {
     return res.status(400).json({ error: 'Missing required fields' });
+  }
+  if (!deviceId || !/^[a-f0-9-]{8,64}$/i.test(deviceId)) {
+    return res.status(400).json({ error: 'Missing or invalid deviceId' });
   }
 
   try {
@@ -26,7 +29,7 @@ export default async function handler(req, res) {
   const { count: dupeCount, error: dupeErr } = await supabase
     .from('submissions')
     .select('id', { count: 'exact', head: true })
-    .eq('device_fingerprint', fingerprint);
+    .eq('device_id', deviceId);
   if (dupeErr) {
     console.error('duplicate check error:', dupeErr);
     return res.status(500).json({ error: 'Internal server error' });
@@ -68,7 +71,8 @@ export default async function handler(req, res) {
         time_taken_seconds: cleanTime,
         ip_address: ip,
         device_type: cleanDevice,
-        device_fingerprint: fingerprint
+        device_fingerprint: fingerprint,
+        device_id: deviceId
       })
       .select('id')
       .single();

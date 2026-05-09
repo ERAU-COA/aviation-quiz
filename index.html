@@ -126,6 +126,21 @@
 
         const QUIZ_TIME_SECONDS = 300;
         const SUBMITTED_FLAG = 'aviationQuiz.submitted';
+        const DEVICE_ID_KEY = 'aviationQuiz.deviceId';
+
+        function getOrCreateDeviceId() {
+            let id = null;
+            try { id = localStorage.getItem(DEVICE_ID_KEY); } catch (e) {}
+            if (id && /^[a-f0-9-]{8,64}$/i.test(id)) return id;
+            const bytes = new Uint8Array(16);
+            (window.crypto || window.msCrypto).getRandomValues(bytes);
+            bytes[6] = (bytes[6] & 0x0f) | 0x40;
+            bytes[8] = (bytes[8] & 0x3f) | 0x80;
+            const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('');
+            id = `${hex.slice(0,8)}-${hex.slice(8,12)}-${hex.slice(12,16)}-${hex.slice(16,20)}-${hex.slice(20,32)}`;
+            try { localStorage.setItem(DEVICE_ID_KEY, id); } catch (e) {}
+            return id;
+        }
 
         const state = {
             password: '',
@@ -136,7 +151,8 @@
             startTime: null,
             currentQ: 0,
             timerInterval: null,
-            submitting: false
+            submitting: false,
+            deviceId: getOrCreateDeviceId()
         };
 
         function $(id) { return document.getElementById(id); }
@@ -286,7 +302,8 @@
                         studentName: state.studentName,
                         answers: state.answers,
                         timeTaken,
-                        deviceType
+                        deviceType,
+                        deviceId: state.deviceId
                     })
                 });
                 const data = await r.json();
@@ -331,7 +348,7 @@
         async function checkSubmissionStatus() {
             showScreen('loadingScreen');
             try {
-                const r = await fetch(`${API_BASE_URL}/api/check-status`);
+                const r = await fetch(`${API_BASE_URL}/api/check-status?deviceId=${encodeURIComponent(state.deviceId)}`);
                 const data = await r.json();
                 if (data.alreadySubmitted) {
                     try { localStorage.setItem(SUBMITTED_FLAG, '1'); } catch (e) {}
