@@ -7,13 +7,16 @@ export default async function handler(req, res) {
   if (applyCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { sessionToken, studentName, answers, timeTaken, deviceType, deviceId } = req.body || {};
+  const { sessionToken, studentName, answers, timeTaken, deviceType, deviceId, browserFingerprint } = req.body || {};
   if (!sessionToken || !studentName || !answers || typeof answers !== 'object') {
     return res.status(400).json({ error: 'Missing required fields' });
   }
   if (!deviceId || !/^[a-f0-9-]{8,64}$/i.test(deviceId)) {
     return res.status(400).json({ error: 'Missing or invalid deviceId' });
   }
+  const cleanFingerprint = typeof browserFingerprint === 'string' && /^[a-f0-9]{32,128}$/i.test(browserFingerprint)
+    ? browserFingerprint
+    : null;
 
   try {
     jwt.verify(sessionToken, process.env.JWT_SECRET);
@@ -26,7 +29,9 @@ export default async function handler(req, res) {
   const ua = req.headers['user-agent'] || '';
   const fingerprint = computeDeviceFingerprint(ip, ua);
 
-  const { count: dupeCount, error: dupeErr } = await supabase
+  const cleanName = String(studentName).trim().slice(0, MAX_NAME_LENGTH);
+
+  const { count: deviceMatch, error: dupeErr } = await supabase
     .from('submissions')
     .select('id', { count: 'exact', head: true })
     .eq('device_id', deviceId);
@@ -34,11 +39,20 @@ export default async function handler(req, res) {
     console.error('duplicate check error:', dupeErr);
     return res.status(500).json({ error: 'Internal server error' });
   }
-  if ((dupeCount ?? 0) > 0) {
+  if ((deviceMatch ?? 0) > 0) {
     return res.status(409).json({ error: 'already_submitted', message: 'This device has already submitted this quiz.' });
   }
 
-  const cleanName = String(studentName).trim().slice(0, MAX_NAME_LENGTH);
+  if (cleanFingerprint) {
+    const { count: fpNameMatch } = await supabase
+      .from('submissions')
+      .select('id', { count: 'exact', head: true })
+      .eq('browser_fingerprint', cleanFingerprint)
+      .ilike('student_name', cleanName);
+    if ((fpNameMatch ?? 0) > 0) {
+      return res.status(409).json({ error: 'already_submitted', message: 'A submission for this name has already been recorded from this browser.' });
+    }
+  }
   const cleanDevice = typeof deviceType === 'string' ? deviceType.slice(0, 20) : 'unknown';
   const cleanTime = Number.isFinite(Number(timeTaken)) ? Math.max(0, Math.floor(Number(timeTaken))) : 0;
 
@@ -72,7 +86,8 @@ export default async function handler(req, res) {
         ip_address: ip,
         device_type: cleanDevice,
         device_fingerprint: fingerprint,
-        device_id: deviceId
+        device_id: deviceId,
+        browser_fingerprint: cleanFingerprint
       })
       .select('id')
       .single();

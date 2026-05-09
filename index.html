@@ -128,6 +128,43 @@
         const SUBMITTED_FLAG = 'aviationQuiz.submitted';
         const DEVICE_ID_KEY = 'aviationQuiz.deviceId';
 
+        async function computeBrowserFingerprint() {
+            const parts = [];
+            parts.push(navigator.userAgent || '');
+            parts.push(navigator.language || '');
+            parts.push(navigator.platform || '');
+            parts.push(String(navigator.hardwareConcurrency || ''));
+            parts.push(`${screen.width}x${screen.height}x${screen.colorDepth}`);
+            parts.push(String(window.devicePixelRatio || ''));
+            try { parts.push(Intl.DateTimeFormat().resolvedOptions().timeZone || ''); } catch (e) {}
+            try {
+                const c = document.createElement('canvas');
+                c.width = 200; c.height = 50;
+                const ctx = c.getContext('2d');
+                ctx.textBaseline = 'top';
+                ctx.font = '14px Arial';
+                ctx.fillStyle = '#069';
+                ctx.fillText('AvL fingerprint test', 2, 14);
+                ctx.fillStyle = 'rgba(102,204,0,0.5)';
+                ctx.fillText('AvL fingerprint test', 4, 16);
+                parts.push(c.toDataURL());
+            } catch (e) {}
+            try {
+                const c = document.createElement('canvas');
+                const gl = c.getContext('webgl') || c.getContext('experimental-webgl');
+                if (gl) {
+                    const dbg = gl.getExtension('WEBGL_debug_renderer_info');
+                    if (dbg) {
+                        parts.push(gl.getParameter(dbg.UNMASKED_VENDOR_WEBGL) || '');
+                        parts.push(gl.getParameter(dbg.UNMASKED_RENDERER_WEBGL) || '');
+                    }
+                }
+            } catch (e) {}
+            const buf = new TextEncoder().encode(parts.join('|'));
+            const hashBuf = await window.crypto.subtle.digest('SHA-256', buf);
+            return Array.from(new Uint8Array(hashBuf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
         function getOrCreateDeviceId() {
             let id = null;
             try { id = localStorage.getItem(DEVICE_ID_KEY); } catch (e) {}
@@ -152,8 +189,11 @@
             currentQ: 0,
             timerInterval: null,
             submitting: false,
-            deviceId: getOrCreateDeviceId()
+            deviceId: getOrCreateDeviceId(),
+            browserFingerprint: null
         };
+
+        computeBrowserFingerprint().then(fp => { state.browserFingerprint = fp; }).catch(() => {});
 
         function $(id) { return document.getElementById(id); }
         function showScreen(id) {
@@ -293,6 +333,9 @@
             setError('quizError', '');
             const deviceType = /mobile|android|iphone|ipad/i.test(navigator.userAgent) ? 'mobile' : 'desktop';
             const timeTaken = Math.floor((Date.now() - state.startTime) / 1000);
+            if (!state.browserFingerprint) {
+                try { state.browserFingerprint = await computeBrowserFingerprint(); } catch (e) {}
+            }
             try {
                 const r = await fetch(`${API_BASE_URL}/api/submit-quiz`, {
                     method: 'POST',
@@ -303,7 +346,8 @@
                         answers: state.answers,
                         timeTaken,
                         deviceType,
-                        deviceId: state.deviceId
+                        deviceId: state.deviceId,
+                        browserFingerprint: state.browserFingerprint
                     })
                 });
                 const data = await r.json();
