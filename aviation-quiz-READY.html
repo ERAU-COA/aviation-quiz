@@ -1,0 +1,1063 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
+    <title>Aviation Leadership Quiz</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.38.0/dist/module/index.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-user-select: none;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .container {
+            background: white;
+            width: 100vw;
+            height: 100vh;
+            max-width: 100%;
+            max-height: 100%;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* ===== PASSWORD SCREEN ===== */
+        .password-screen {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 0;
+        }
+
+        .password-screen.hidden {
+            display: none;
+        }
+
+        .password-header {
+            flex: 0 0 auto;
+            padding: 6vh 5vw;
+            text-align: center;
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            color: white;
+        }
+
+        .password-header h1 {
+            font-size: clamp(24px, 8vw, 48px);
+            margin-bottom: 2vh;
+            font-weight: 700;
+        }
+
+        .password-header p {
+            font-size: clamp(14px, 4vw, 20px);
+            opacity: 0.9;
+        }
+
+        .password-display-area {
+            flex: 0 0 auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 4vh 5vw;
+            gap: 0.5vw;
+            min-height: 12vh;
+        }
+
+        .password-digit {
+            width: clamp(50px, 12vw, 80px);
+            height: clamp(50px, 12vw, 80px);
+            border: 3px solid #1e40af;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: clamp(24px, 6vw, 40px);
+            font-weight: 700;
+            color: #1e40af;
+            background: #f0f4ff;
+        }
+
+        .password-digit.filled {
+            background: #1e40af;
+            color: white;
+        }
+
+        .keypad {
+            flex: 1 1 auto;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2.5vw;
+            padding: 4vh 5vw;
+            overflow: hidden;
+        }
+
+        .key-button {
+            border: none;
+            border-radius: 16px;
+            font-size: clamp(20px, 6vw, 36px);
+            font-weight: 700;
+            background: #e0e7ff;
+            color: #1e40af;
+            cursor: pointer;
+            transition: all 0.15s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 60px;
+            active: none;
+        }
+
+        .key-button:active {
+            transform: scale(0.95);
+            background: #c7d2fe;
+        }
+
+        .key-button.delete {
+            grid-column: 2;
+            background: #fecaca;
+            color: #dc2626;
+            font-size: clamp(18px, 5vw, 28px);
+        }
+
+        .key-button.delete:active {
+            background: #fca5a5;
+        }
+
+        .key-button.submit {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%);
+            color: white;
+            font-size: clamp(18px, 5vw, 24px);
+        }
+
+        .key-button.submit:active {
+            transform: scale(0.98);
+            background: linear-gradient(135deg, #172d6e 0%, #1a35a8 100%);
+        }
+
+        .key-button:disabled {
+            background: #d1d5db;
+            color: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        /* ===== NAME SCREEN ===== */
+        .name-screen {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 0;
+        }
+
+        .name-screen.hidden {
+            display: none;
+        }
+
+        .name-header {
+            flex: 0 0 auto;
+            padding: 6vh 5vw;
+            text-align: center;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+        }
+
+        .name-header h1 {
+            font-size: clamp(24px, 8vw, 48px);
+            margin-bottom: 2vh;
+            font-weight: 700;
+        }
+
+        .name-header p {
+            font-size: clamp(14px, 4vw, 20px);
+            opacity: 0.9;
+        }
+
+        .name-input-area {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 6vh 5vw;
+            gap: 4vh;
+        }
+
+        .name-input-area input {
+            width: 100%;
+            padding: 3vh 4vw;
+            font-size: clamp(18px, 5vw, 28px);
+            border: 3px solid #047857;
+            border-radius: 16px;
+            text-align: center;
+            font-weight: 600;
+            letter-spacing: 2px;
+        }
+
+        .name-input-area input:focus {
+            outline: none;
+            border-color: #059669;
+            background: #f0fdf4;
+        }
+
+        .name-button {
+            padding: 3vh 4vw;
+            font-size: clamp(18px, 5vw, 28px);
+            font-weight: 700;
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            color: white;
+            border: none;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .name-button:active {
+            transform: scale(0.98);
+            background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+        }
+
+        .name-button:disabled {
+            background: #d1d5db;
+            cursor: not-allowed;
+        }
+
+        /* ===== QUIZ SCREEN ===== */
+        .quiz-screen {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 0;
+        }
+
+        .quiz-screen.hidden {
+            display: none;
+        }
+
+        .quiz-header {
+            flex: 0 0 auto;
+            padding: 4vh 5vw;
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            color: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .quiz-title {
+            font-size: clamp(18px, 5vw, 28px);
+            font-weight: 700;
+        }
+
+        .timer {
+            font-size: clamp(24px, 6vw, 36px);
+            font-weight: 700;
+            background: rgba(255, 255, 255, 0.2);
+            padding: 1.5vh 2.5vw;
+            border-radius: 12px;
+            min-width: 20vw;
+            text-align: center;
+        }
+
+        .timer.warning {
+            background: #fca5a5;
+            color: #dc2626;
+            font-weight: 800;
+        }
+
+        .progress-bar {
+            height: 0.8vh;
+            background: rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: rgba(255, 255, 255, 0.6);
+            transition: width 0.3s;
+        }
+
+        .question-area {
+            flex: 1 1 auto;
+            display: flex;
+            flex-direction: column;
+            padding: 4vh 5vw;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        .question-info {
+            font-size: clamp(12px, 3vw, 16px);
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 2vh;
+            font-weight: 600;
+        }
+
+        .question-text {
+            font-size: clamp(22px, 6vw, 32px);
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 4vh;
+            line-height: 1.4;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 2vh;
+            flex: 1 1 auto;
+        }
+
+        .option {
+            padding: 3vh 4vw;
+            border: 3px solid #e5e7eb;
+            border-radius: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+            background: white;
+            font-size: clamp(18px, 5vw, 24px);
+            font-weight: 600;
+            color: #374151;
+            display: flex;
+            align-items: center;
+            gap: 2vw;
+        }
+
+        .option:hover {
+            border-color: #7c3aed;
+            background: #faf5ff;
+        }
+
+        .option.selected {
+            background: #ede9fe;
+            border-color: #7c3aed;
+            color: #6d28d9;
+        }
+
+        .option input[type="radio"] {
+            width: clamp(20px, 5vw, 28px);
+            height: clamp(20px, 5vw, 28px);
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .option label {
+            flex: 1;
+            cursor: pointer;
+        }
+
+        .quiz-actions {
+            flex: 0 0 auto;
+            padding: 3vh 5vw;
+            display: flex;
+            gap: 3vw;
+        }
+
+        .btn-back {
+            flex: 0 0 auto;
+            padding: 2vh 4vw;
+            font-size: clamp(14px, 4vw, 18px);
+            font-weight: 600;
+            background: #f3f4f6;
+            color: #374151;
+            border: 2px solid #e5e7eb;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-back:active {
+            background: #e5e7eb;
+        }
+
+        .btn-submit {
+            flex: 1 1 auto;
+            padding: 2vh 4vw;
+            font-size: clamp(16px, 4vw, 22px);
+            font-weight: 700;
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-submit:active {
+            transform: scale(0.98);
+            background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
+        }
+
+        /* ===== RESULTS SCREEN ===== */
+        .results-screen {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            padding: 4vh 5vw;
+            overflow-y: auto;
+        }
+
+        .results-screen.hidden {
+            display: none;
+        }
+
+        .results-header {
+            text-align: center;
+            margin-bottom: 4vh;
+        }
+
+        .results-header h2 {
+            font-size: clamp(24px, 6vw, 32px);
+            color: #111827;
+            margin-bottom: 2vh;
+        }
+
+        .score-display {
+            font-size: clamp(48px, 15vw, 72px);
+            font-weight: 800;
+            color: #7c3aed;
+            text-align: center;
+            margin: 2vh 0 3vh 0;
+        }
+
+        .score-label {
+            font-size: clamp(16px, 4vw, 22px);
+            color: #6b7280;
+            text-align: center;
+            margin-bottom: 4vh;
+        }
+
+        .results-list {
+            display: flex;
+            flex-direction: column;
+            gap: 2vh;
+            margin-bottom: 3vh;
+        }
+
+        .result-item {
+            padding: 3vh 4vw;
+            border-left: 5px solid #7c3aed;
+            background: #f9f5ff;
+            border-radius: 8px;
+        }
+
+        .result-item.correct {
+            border-left-color: #10b981;
+            background: #ecfdf5;
+        }
+
+        .result-item.incorrect {
+            border-left-color: #ef4444;
+            background: #fef2f2;
+        }
+
+        .result-question {
+            font-size: clamp(16px, 4vw, 20px);
+            font-weight: 700;
+            color: #111827;
+            margin-bottom: 1.5vh;
+        }
+
+        .result-answer {
+            font-size: clamp(14px, 3.5vw, 18px);
+            color: #4b5563;
+            margin-bottom: 0.8vh;
+        }
+
+        .result-icon {
+            display: inline-block;
+            margin-right: 1vw;
+            font-size: clamp(18px, 4vw, 24px);
+        }
+
+        .loading {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            gap: 3vh;
+        }
+
+        .spinner {
+            width: clamp(40px, 10vw, 60px);
+            height: clamp(40px, 10vw, 60px);
+            border: 4px solid #f3f4f6;
+            border-top: 4px solid #7c3aed;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: clamp(16px, 4vw, 22px);
+            color: #374151;
+            font-weight: 600;
+        }
+
+        .error-message {
+            color: #dc2626;
+            font-size: clamp(14px, 3.5vw, 18px);
+            padding: 2vh 3vw;
+            background: #fef2f2;
+            border: 2px solid #fca5a5;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 2vh;
+            display: none;
+        }
+
+        .error-message.show {
+            display: block;
+        }
+
+        /* Scrollbar styling */
+        .question-area::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .question-area::-webkit-scrollbar-track {
+            background: #f3f4f6;
+        }
+
+        .question-area::-webkit-scrollbar-thumb {
+            background: #d1d5db;
+            border-radius: 4px;
+        }
+
+        .question-area::-webkit-scrollbar-thumb:hover {
+            background: #9ca3af;
+        }
+
+        @media (orientation: landscape) {
+            .container {
+                max-height: 100vh;
+            }
+
+            .question-area {
+                padding: 2vh 5vw;
+            }
+
+            .quiz-header {
+                padding: 2vh 5vw;
+            }
+
+            .password-header {
+                padding: 3vh 5vw;
+            }
+        }
+
+        @media (max-height: 500px) {
+            .password-header {
+                padding: 2vh 5vw;
+            }
+
+            .password-display-area {
+                padding: 1.5vh 5vw;
+            }
+
+            .keypad {
+                gap: 1.5vw;
+                padding: 2vh 5vw;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- PASSWORD SCREEN -->
+        <div class="password-screen" id="passwordScreen">
+            <div class="password-header">
+                <h1>✈️ Aviation Leadership</h1>
+                <p>Enter Quiz Password</p>
+            </div>
+
+            <div class="password-display-area">
+                <div class="password-digit" id="digit1"></div>
+                <div class="password-digit" id="digit2"></div>
+                <div class="password-digit" id="digit3"></div>
+                <div class="password-digit" id="digit4"></div>
+                <div class="password-digit" id="digit5"></div>
+                <div class="password-digit" id="digit6"></div>
+            </div>
+
+            <div class="keypad" id="keypad"></div>
+        </div>
+
+        <!-- NAME SCREEN -->
+        <div class="name-screen hidden" id="nameScreen">
+            <div class="name-header">
+                <h1>✈️ Almost There</h1>
+                <p>Enter Your Name</p>
+            </div>
+
+            <div class="name-input-area">
+                <input type="text" id="studentName" placeholder="Type your name" autocomplete="off" spellcheck="false">
+                <button class="name-button" id="nameSubmitBtn" onclick="submitName()">Begin Quiz</button>
+            </div>
+        </div>
+
+        <!-- QUIZ SCREEN -->
+        <div class="quiz-screen hidden" id="quizScreen">
+            <div class="quiz-header">
+                <div class="quiz-title" id="quizTitle">Quiz</div>
+                <div class="timer" id="timer">5:00</div>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progressFill" style="width: 0%"></div>
+            </div>
+
+            <div class="error-message" id="quizError"></div>
+
+            <div class="question-area" id="questionsContainer"></div>
+
+            <div class="quiz-actions">
+                <button class="btn-back" id="backBtn" onclick="previousQuestion()" style="display: none;">← Back</button>
+                <button class="btn-submit" id="submitBtn" onclick="submitQuiz()">Submit Quiz</button>
+            </div>
+        </div>
+
+        <!-- RESULTS SCREEN -->
+        <div class="results-screen hidden" id="resultsScreen">
+            <div class="results-header">
+                <h2>Quiz Complete! 🎉</h2>
+            </div>
+            <div class="score-display" id="scoreDisplay">0/0</div>
+            <div class="score-label">Correct Answers</div>
+            <div class="results-list" id="resultsList"></div>
+            <button class="name-button" onclick="location.reload()" style="margin-top: 4vh; width: 100%; padding: 2.5vh 4vw;">Take Another Quiz</button>
+        </div>
+
+        <!-- LOADING SCREEN -->
+        <div class="loading" id="loadingScreen" style="display: none;">
+            <div class="spinner"></div>
+            <p class="loading-text">Loading quiz...</p>
+        </div>
+    </div>
+
+    <script>
+        // ===== CONFIGURATION - YOUR CREDENTIALS ARE HERE =====
+        const SUPABASE_URL = 'https://nvagiezojxixpekknagk.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im52YWdpZXpvanhpeHBla2tuYWdrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgyOTg4ODUsImV4cCI6MjA5Mzg3NDg4NX0.kYyap46N4BXpA6w0qtA4zskABuX2GHjx77Cu6Zb96j4';
+        const PASSWORD_LENGTH = 6;
+
+        // ===== STATE =====
+        let supabase;
+        let passwordInput = '';
+        let currentQuiz = null;
+        let questions = [];
+        let studentAnswers = {};
+        let startTime = null;
+        let timerInterval = null;
+        let currentQuestionIndex = 0;
+        let quizStarted = false;
+
+        // ===== INITIALIZE =====
+        window.addEventListener('DOMContentLoaded', () => {
+            supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+            initKeypad();
+        });
+
+        // ===== KEYPAD SETUP =====
+        function initKeypad() {
+            const keypadEl = document.getElementById('keypad');
+            keypadEl.innerHTML = '';
+
+            // Number buttons 1-9
+            for (let i = 1; i <= 9; i++) {
+                const btn = document.createElement('button');
+                btn.className = 'key-button';
+                btn.textContent = i;
+                btn.onclick = () => addDigit(i);
+                keypadEl.appendChild(btn);
+            }
+
+            // Delete button
+            const delBtn = document.createElement('button');
+            delBtn.className = 'key-button delete';
+            delBtn.innerHTML = '← Delete';
+            delBtn.onclick = deleteDigit;
+            keypadEl.appendChild(delBtn);
+
+            // 0 button
+            const zeroBtn = document.createElement('button');
+            zeroBtn.className = 'key-button';
+            zeroBtn.textContent = '0';
+            zeroBtn.onclick = () => addDigit(0);
+            keypadEl.appendChild(zeroBtn);
+
+            // Submit button
+            const submitBtn = document.createElement('button');
+            submitBtn.className = 'key-button submit';
+            submitBtn.textContent = 'Check Password';
+            submitBtn.onclick = checkPassword;
+            submitBtn.id = 'passwordSubmitBtn';
+            keypadEl.appendChild(submitBtn);
+
+            updatePasswordDisplay();
+        }
+
+        function addDigit(digit) {
+            if (passwordInput.length < PASSWORD_LENGTH) {
+                passwordInput += digit;
+                updatePasswordDisplay();
+            }
+        }
+
+        function deleteDigit() {
+            passwordInput = passwordInput.slice(0, -1);
+            updatePasswordDisplay();
+        }
+
+        function updatePasswordDisplay() {
+            for (let i = 1; i <= PASSWORD_LENGTH; i++) {
+                const digitEl = document.getElementById(`digit${i}`);
+                if (i <= passwordInput.length) {
+                    digitEl.textContent = '●';
+                    digitEl.classList.add('filled');
+                } else {
+                    digitEl.textContent = '';
+                    digitEl.classList.remove('filled');
+                }
+            }
+
+            // Enable/disable submit button
+            const submitBtn = document.getElementById('passwordSubmitBtn');
+            submitBtn.disabled = passwordInput.length !== PASSWORD_LENGTH;
+        }
+
+        // ===== PASSWORD CHECK =====
+        async function checkPassword() {
+            try {
+                const submitBtn = document.getElementById('passwordSubmitBtn');
+                submitBtn.disabled = true;
+
+                // Fetch quiz by password
+                const { data: quizzes, error } = await supabase
+                    .from('quizzes')
+                    .select('*')
+                    .eq('password', passwordInput);
+
+                if (error) throw error;
+
+                if (!quizzes || quizzes.length === 0) {
+                    // Password incorrect - shake and reset
+                    const displayArea = document.querySelector('.password-display-area');
+                    displayArea.style.animation = 'none';
+                    setTimeout(() => {
+                        displayArea.style.animation = 'shake 0.4s';
+                    }, 10);
+                    passwordInput = '';
+                    updatePasswordDisplay();
+                    submitBtn.disabled = false;
+                    return;
+                }
+
+                currentQuiz = quizzes[0];
+
+                // Move to name screen
+                document.getElementById('passwordScreen').classList.add('hidden');
+                document.getElementById('nameScreen').classList.remove('hidden');
+                document.getElementById('studentName').focus();
+            } catch (err) {
+                console.error(err);
+                passwordInput = '';
+                updatePasswordDisplay();
+                const submitBtn = document.getElementById('passwordSubmitBtn');
+                submitBtn.disabled = false;
+            }
+        }
+
+        // ===== NAME SUBMISSION =====
+        function submitName() {
+            const name = document.getElementById('studentName').value.trim();
+            if (!name) {
+                document.getElementById('studentName').style.borderColor = '#dc2626';
+                return;
+            }
+
+            window.studentName = name;
+            startQuiz();
+        }
+
+        // Allow Enter key to submit name
+        document.addEventListener('DOMContentLoaded', () => {
+            const nameInput = document.getElementById('studentName');
+            if (nameInput) {
+                nameInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') submitName();
+                });
+            }
+        });
+
+        // ===== START QUIZ =====
+        async function startQuiz() {
+            try {
+                document.getElementById('nameScreen').classList.add('hidden');
+                document.getElementById('loadingScreen').style.display = 'flex';
+
+                // Fetch questions
+                const { data: questionsData, error } = await supabase
+                    .from('questions')
+                    .select('*')
+                    .eq('quiz_id', currentQuiz.id)
+                    .order('question_number', { ascending: true });
+
+                if (error) throw error;
+
+                questions = questionsData;
+                studentAnswers = {};
+                questions.forEach(q => {
+                    studentAnswers[q.id] = null;
+                });
+
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('quizScreen').classList.remove('hidden');
+                document.getElementById('quizTitle').textContent = currentQuiz.title;
+
+                // Start quiz
+                quizStarted = true;
+                startTime = Date.now();
+                currentQuestionIndex = 0;
+                startTimer();
+                renderQuestion();
+            } catch (err) {
+                console.error(err);
+                showError('quizError', 'Error loading quiz');
+                document.getElementById('loadingScreen').style.display = 'none';
+            }
+        }
+
+        // ===== TIMER =====
+        function startTimer() {
+            const totalSeconds = 5 * 60; // 5 minutes
+
+            timerInterval = setInterval(() => {
+                if (!quizStarted) return;
+
+                const elapsed = Math.floor((Date.now() - startTime) / 1000);
+                const remaining = Math.max(0, totalSeconds - elapsed);
+
+                const minutes = Math.floor(remaining / 60);
+                const seconds = remaining % 60;
+                const timerEl = document.getElementById('timer');
+                timerEl.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+
+                if (remaining < 60) {
+                    timerEl.classList.add('warning');
+                }
+
+                if (remaining === 0) {
+                    clearInterval(timerInterval);
+                    submitQuiz();
+                }
+            }, 1000);
+        }
+
+        // ===== RENDER QUESTION =====
+        function renderQuestion() {
+            const question = questions[currentQuestionIndex];
+            const container = document.getElementById('questionsContainer');
+
+            const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+            document.getElementById('progressFill').style.width = progress + '%';
+
+            let html = `
+                <div class="question-info">Question ${currentQuestionIndex + 1} of ${questions.length}</div>
+                <div class="question-text">${escapeHtml(question.question_text)}</div>
+                <div class="options">
+            `;
+
+            ['A', 'B', 'C', 'D'].forEach(letter => {
+                const optionKey = `option_${letter.toLowerCase()}`;
+                const optionText = question[optionKey];
+                const isSelected = studentAnswers[question.id] === letter;
+
+                html += `
+                    <div class="option ${isSelected ? 'selected' : ''}" onclick="selectAnswer(${question.id}, '${letter}')">
+                        <input type="radio" id="opt_${question.id}_${letter}" name="question_${question.id}" value="${letter}" ${isSelected ? 'checked' : ''}>
+                        <label for="opt_${question.id}_${letter}">${escapeHtml(optionText)}</label>
+                    </div>
+                `;
+            });
+
+            html += `</div>`;
+
+            container.innerHTML = html;
+
+            // Show/hide back button
+            const backBtn = document.getElementById('backBtn');
+            backBtn.style.display = currentQuestionIndex > 0 ? 'block' : 'none';
+
+            // Scroll to top
+            container.scrollTop = 0;
+        }
+
+        function selectAnswer(questionId, answer) {
+            studentAnswers[questionId] = answer;
+            renderQuestion();
+        }
+
+        function previousQuestion() {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                renderQuestion();
+            }
+        }
+
+        // ===== SUBMIT QUIZ =====
+        async function submitQuiz() {
+            clearInterval(timerInterval);
+            quizStarted = false;
+
+            if (document.getElementById('quizScreen').classList.contains('hidden')) {
+                return;
+            }
+
+            try {
+                document.getElementById('quizScreen').classList.add('hidden');
+                document.getElementById('loadingScreen').style.display = 'flex';
+
+                const timeTaken = Math.floor((Date.now() - startTime) / 1000);
+                let correctCount = 0;
+                const resultsData = [];
+
+                // Create submission record
+                const { data: submission, error: subError } = await supabase
+                    .from('submissions')
+                    .insert([{
+                        quiz_id: currentQuiz.id,
+                        student_name: window.studentName,
+                        student_email: null,
+                        time_taken_seconds: timeTaken,
+                        total_questions: questions.length
+                    }])
+                    .select('id');
+
+                if (subError) throw subError;
+
+                const submissionId = submission[0].id;
+
+                // Save answers
+                for (const question of questions) {
+                    const studentAnswer = studentAnswers[question.id];
+                    const isCorrect = studentAnswer === question.correct_answer;
+
+                    if (isCorrect) correctCount++;
+
+                    await supabase
+                        .from('student_answers')
+                        .insert([{
+                            submission_id: submissionId,
+                            question_id: question.id,
+                            student_answer: studentAnswer,
+                            is_correct: isCorrect
+                        }]);
+
+                    resultsData.push({
+                        question: question.question_text,
+                        studentAnswer: studentAnswer,
+                        correctAnswer: question.correct_answer,
+                        isCorrect: isCorrect,
+                        options: {
+                            A: question.option_a,
+                            B: question.option_b,
+                            C: question.option_c,
+                            D: question.option_d
+                        }
+                    });
+                }
+
+                // Update submission with score
+                await supabase
+                    .from('submissions')
+                    .update({ score: correctCount })
+                    .eq('id', submissionId);
+
+                // Show results
+                showResults(correctCount, resultsData);
+            } catch (err) {
+                console.error(err);
+                showError('quizError', 'Error submitting quiz');
+                document.getElementById('loadingScreen').style.display = 'none';
+                document.getElementById('quizScreen').classList.remove('hidden');
+            }
+        }
+
+        function showResults(score, results) {
+            document.getElementById('loadingScreen').style.display = 'none';
+            document.getElementById('resultsScreen').classList.remove('hidden');
+            document.getElementById('scoreDisplay').textContent = `${score} / ${questions.length}`;
+
+            let resultsList = '';
+            results.forEach((result, index) => {
+                const resultClass = result.isCorrect ? 'correct' : 'incorrect';
+                const icon = result.isCorrect ? '✓' : '✗';
+                resultsList += `
+                    <div class="result-item ${resultClass}">
+                        <div class="result-question"><span class="result-icon">${icon}</span> ${escapeHtml(result.question)}</div>
+                        <div class="result-answer"><strong>Your answer:</strong> ${result.studentAnswer || '—'} – ${escapeHtml(result.options[result.studentAnswer] || 'Not answered')}</div>
+                        <div class="result-answer"><strong>Correct:</strong> ${result.correctAnswer} – ${escapeHtml(result.options[result.correctAnswer])}</div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('resultsList').innerHTML = resultsList;
+        }
+
+        // ===== UTILITIES =====
+        function showError(elementId, message) {
+            const errorEl = document.getElementById(elementId);
+            if (errorEl) {
+                errorEl.textContent = message;
+                errorEl.classList.add('show');
+            }
+        }
+
+        function escapeHtml(text) {
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return text.replace(/[&<>"']/g, m => map[m]);
+        }
+
+        // Add shake animation for wrong password
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes shake {
+                0%, 100% { transform: translateX(0); }
+                10%, 30%, 50%, 70%, 90% { transform: translateX(-10px); }
+                20%, 40%, 60%, 80% { transform: translateX(10px); }
+            }
+        `;
+        document.head.appendChild(style);
+    </script>
+</body>
+</html>
