@@ -197,7 +197,10 @@
             <div class="panel" id="panel-questions">
                 <div class="header-row">
                     <h2>Questions</h2>
-                    <button id="addQuestionBtn">+ Add Question</button>
+                    <div class="actions">
+                        <button class="secondary" id="bulkAddBtn">&#128196; Bulk Paste</button>
+                        <button id="addQuestionBtn">+ Add Question</button>
+                    </div>
                 </div>
                 <div id="questionEditor"></div>
                 <div id="questionList"></div>
@@ -793,6 +796,213 @@
             }
         }
 
+        function openBulkEditor() {
+            editingQuestionId = null;
+            const editor = $('questionEditor');
+            const example = `1. What is the most important leadership principle in a cockpit emergency?
+A. Making the fastest decision possible
+B. Maintaining crew resource management and clear communication *
+C. Following procedures without questioning
+D. Delegating all decisions to the co-pilot
+
+2. What does CRM stand for?
+a) Cockpit Resource Management
+b) Crew Resource Management (correct)
+c) Crew Risk Management
+d) Cockpit Risk Mitigation
+
+3. When facing a critical decision under pressure, a leader should:
+A) Act immediately without consultation
+B) Take time to gather all available information
+C) Avoid taking responsibility
+D) Ask the most junior crew member for advice
+Answer: B`;
+            editor.innerHTML = `
+                <div class="card">
+                    <h2>Bulk Paste Questions</h2>
+                    <p class="muted" style="margin-bottom: 12px;">Paste your questions below. Mark the correct answer with <code style="background:#0f172a;padding:2px 6px;border-radius:3px;">*</code> at the end of the option, with <code style="background:#0f172a;padding:2px 6px;border-radius:3px;">(correct)</code>, or include an <code style="background:#0f172a;padding:2px 6px;border-radius:3px;">Answer: B</code> line. You'll get to review everything before saving.</p>
+                    <details style="margin-bottom: 12px;">
+                        <summary class="muted" style="cursor:pointer;">Show format example</summary>
+                        <pre id="bulkExample" style="background:#0f172a;padding:12px;border-radius:6px;font-size:12px;white-space:pre-wrap;margin-top:8px;color:#cbd5e1;"></pre>
+                    </details>
+                    <div class="field">
+                        <textarea id="bulkText" rows="12" placeholder="Paste questions here..."></textarea>
+                    </div>
+                    <div class="actions">
+                        <button id="bulkParseBtn">Parse</button>
+                        <button class="secondary" id="bulkCancelBtn">Cancel</button>
+                    </div>
+                    <div class="error" id="bulkError"></div>
+                    <div id="bulkPreview"></div>
+                </div>
+            `;
+            $('bulkExample').textContent = example;
+            $('bulkParseBtn').onclick = parseBulkText;
+            $('bulkCancelBtn').onclick = () => { editor.innerHTML = ''; };
+        }
+
+        function parseBulkText() {
+            $('bulkError').textContent = '';
+            const text = $('bulkText').value;
+            if (!text.trim()) { $('bulkError').textContent = 'Paste some text first.'; return; }
+            const parsed = parseQuestions(text);
+            if (!parsed.length) {
+                $('bulkError').textContent = 'Could not parse any questions. Check the format example above.';
+                return;
+            }
+            renderBulkPreview(parsed);
+        }
+
+        function parseQuestions(text) {
+            const blocks = text.split(/\n\s*(?=(?:Q(?:uestion)?\s*)?\d+\s*[.):]\s*\S)/i);
+            const out = [];
+            for (const block of blocks) {
+                const q = parseBlock(block);
+                if (q) out.push(q);
+            }
+            return out;
+        }
+
+        function parseBlock(block) {
+            const lines = block.split('\n').map(l => l.trim()).filter(Boolean);
+            if (lines.length < 5) return null;
+            const optionRegex = /^[\(\[]?\s*([a-dA-D])[\)\]\.\:]\s*(.+)$/;
+            const questionLines = [];
+            const options = {};
+            let correctAnswer = null;
+            for (const line of lines) {
+                const m = line.match(optionRegex);
+                if (m && Object.keys(options).length < 4) {
+                    const letter = m[1].toUpperCase();
+                    let txt = m[2].trim();
+                    if (/(\*+|★|✓)\s*$/.test(txt)) {
+                        correctAnswer = letter;
+                        txt = txt.replace(/(\*+|★|✓)\s*$/, '').trim();
+                    } else if (/\(\s*correct\s*\)/i.test(txt)) {
+                        correctAnswer = letter;
+                        txt = txt.replace(/\s*\(\s*correct\s*\)\s*/i, '').trim();
+                    } else if (/\(\s*answer\s*\)/i.test(txt)) {
+                        correctAnswer = letter;
+                        txt = txt.replace(/\s*\(\s*answer\s*\)\s*/i, '').trim();
+                    }
+                    options[letter] = txt;
+                } else if (Object.keys(options).length === 0) {
+                    questionLines.push(line);
+                } else {
+                    const ansMatch = line.match(/^(?:Correct\s+)?Answer\s*[:=]\s*([a-dA-D])\b/i);
+                    if (ansMatch) correctAnswer = ansMatch[1].toUpperCase();
+                }
+            }
+            if (questionLines.length > 0) {
+                questionLines[0] = questionLines[0].replace(/^(?:Q(?:uestion)?\s*)?\d+\s*[.):]\s*/i, '');
+            }
+            const questionText = questionLines.join(' ').trim();
+            if (!questionText) return null;
+            if (!options.A || !options.B || !options.C || !options.D) return null;
+            return {
+                question_text: questionText,
+                option_a: options.A,
+                option_b: options.B,
+                option_c: options.C,
+                option_d: options.D,
+                correct_answer: correctAnswer || 'A',
+                _autoCorrect: !correctAnswer
+            };
+        }
+
+        function renderBulkPreview(questions) {
+            const preview = $('bulkPreview');
+            const anyAuto = questions.some(q => q._autoCorrect);
+            preview.innerHTML = `
+                <h3 style="margin-top:24px;">Preview &mdash; ${questions.length} question${questions.length === 1 ? '' : 's'}</h3>
+                <p class="muted" style="margin-bottom: 12px;">Review and edit if needed. ${anyAuto ? 'Some correct answers couldn’t be detected and defaulted to A &mdash; check the highlighted ones.' : ''}</p>
+                <div id="bulkList"></div>
+                <div class="actions" style="margin-top:16px;">
+                    <button id="bulkAddAllBtn">Add all <span id="bulkAddCount">${questions.length}</span> questions to quiz</button>
+                </div>
+                <div class="error" id="bulkAddError"></div>
+            `;
+            const list = $('bulkList');
+            questions.forEach((q, idx) => {
+                const card = document.createElement('div');
+                card.className = 'question-card';
+                if (q._autoCorrect) card.style.borderColor = '#d97706';
+                card.dataset.idx = idx;
+                card.innerHTML = `
+                    <div style="display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:8px;">
+                        <strong>Question ${idx + 1}${q._autoCorrect ? ' <span class="muted" style="font-size:11px;">(correct answer auto-set to A)</span>' : ''}</strong>
+                        <button class="danger remove-bulk">Remove</button>
+                    </div>
+                    <div class="field"><label>Question text</label><textarea data-field="question_text" rows="2"></textarea></div>
+                    <div class="field"><label>Option A</label><input data-field="option_a"></div>
+                    <div class="field"><label>Option B</label><input data-field="option_b"></div>
+                    <div class="field"><label>Option C</label><input data-field="option_c"></div>
+                    <div class="field"><label>Option D</label><input data-field="option_d"></div>
+                    <div class="field"><label>Correct answer</label>
+                        <select data-field="correct_answer" style="max-width:120px;">
+                            <option value="A">A</option><option value="B">B</option>
+                            <option value="C">C</option><option value="D">D</option>
+                        </select>
+                    </div>
+                `;
+                card.querySelector('[data-field="question_text"]').value = q.question_text;
+                card.querySelector('[data-field="option_a"]').value = q.option_a;
+                card.querySelector('[data-field="option_b"]').value = q.option_b;
+                card.querySelector('[data-field="option_c"]').value = q.option_c;
+                card.querySelector('[data-field="option_d"]').value = q.option_d;
+                card.querySelector('[data-field="correct_answer"]').value = q.correct_answer;
+                card.querySelector('.remove-bulk').onclick = () => {
+                    card.remove();
+                    const remaining = document.querySelectorAll('#bulkList .question-card').length;
+                    $('bulkAddCount').textContent = remaining;
+                };
+                list.appendChild(card);
+            });
+            $('bulkAddAllBtn').onclick = bulkAddAll;
+        }
+
+        async function bulkAddAll() {
+            $('bulkAddError').textContent = '';
+            const cards = Array.from(document.querySelectorAll('#bulkList .question-card'));
+            if (!cards.length) { $('bulkAddError').textContent = 'No questions to add.'; return; }
+            const btn = $('bulkAddAllBtn');
+            btn.disabled = true;
+            btn.textContent = 'Adding...';
+            let added = 0;
+            const failures = [];
+            for (let i = 0; i < cards.length; i++) {
+                const card = cards[i];
+                const body = {
+                    question_text: card.querySelector('[data-field="question_text"]').value.trim(),
+                    option_a: card.querySelector('[data-field="option_a"]').value.trim(),
+                    option_b: card.querySelector('[data-field="option_b"]').value.trim(),
+                    option_c: card.querySelector('[data-field="option_c"]').value.trim(),
+                    option_d: card.querySelector('[data-field="option_d"]').value.trim(),
+                    correct_answer: card.querySelector('[data-field="correct_answer"]').value
+                };
+                if (!body.question_text || !body.option_a || !body.option_b || !body.option_c || !body.option_d) {
+                    failures.push(`#${i + 1} (missing fields)`);
+                    continue;
+                }
+                try {
+                    await api(`/api/instructor?action=questions&quizId=${currentQuizId}`, {
+                        method: 'POST',
+                        body: JSON.stringify(body)
+                    });
+                    added++;
+                } catch (e) {
+                    failures.push(`#${i + 1} (${e.message})`);
+                }
+            }
+            $('questionEditor').innerHTML = '';
+            await loadQuestions();
+            if (failures.length) {
+                alert(`Added ${added} question${added === 1 ? '' : 's'}.\n\nFailed: ${failures.join(', ')}`);
+            } else {
+                alert(`Added ${added} question${added === 1 ? '' : 's'} successfully.`);
+            }
+        }
+
         async function deleteQuestion(id) {
             if (!confirm('Delete this question? This cannot be undone.')) return;
             try {
@@ -1020,6 +1230,7 @@
             $('regenQrBtn').onclick = drawQR;
             $('savePwdBtn').onclick = savePassword;
             $('addQuestionBtn').onclick = () => openQuestionEditor(null);
+            $('bulkAddBtn').onclick = openBulkEditor;
             $('refreshSubsBtn').onclick = loadSubmissions;
             $('refreshStatsBtn').onclick = loadStats;
             document.querySelectorAll('input[name=mode]').forEach(r => r.onchange = (e) => setMode(e.target.value));
