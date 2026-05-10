@@ -30,7 +30,7 @@ export default async function handler(req, res) {
       );
 
     const token = jwt.sign({ ip, quizId: quiz.id, sync: true }, process.env.JWT_SECRET, { expiresIn: '6h' });
-    return res.status(200).json({ valid: true, sessionToken: token, status: quiz.status, quizTitle: quiz.title });
+    return res.status(200).json({ valid: true, sessionToken: token, status: quiz.status, quizTitle: quiz.title, courseName: quiz.courseName });
   } catch (e) {
     console.error('join-waiting-room error:', e);
     return res.status(500).json({ error: 'Internal server error', message: e.message });

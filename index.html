@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aviation Leadership Quiz</title>
+    <title>Online Testing System</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
@@ -49,7 +49,7 @@
 <body>
     <div class="container">
         <div class="screen active" id="loadingScreen">
-            <h1>&#9992;&#65039; Aviation Leadership Quiz</h1>
+            <h1>Online Testing System</h1>
             <p>Loading...</p>
         </div>
 
@@ -59,13 +59,14 @@
         </div>
 
         <div class="screen" id="sessionClosedScreen">
-            <h1>&#9992;&#65039; Quiz Closed</h1>
+            <h1>Quiz Closed</h1>
             <p id="sessionClosedMessage" style="margin-bottom: 20px;">The quiz session is not currently open. Please wait for your instructor.</p>
         </div>
 
         <div class="screen" id="waitingRoomScreen">
-            <h1>&#9992;&#65039; Waiting Room</h1>
-            <p style="text-align: center; font-weight: 600; color: #1e40af; margin-bottom: 8px;" id="waitingQuizTitle"></p>
+            <h1>Waiting Room</h1>
+            <p style="text-align: center; font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;" id="waitingCourseName"></p>
+            <p style="text-align: center; font-weight: 600; color: #1e40af; font-size: 18px; margin-bottom: 16px;" id="waitingQuizTitle"></p>
             <p style="margin-bottom: 20px;">You're checked in. The quiz will start when your instructor begins.</p>
             <div style="text-align: center; margin: 30px 0;">
                 <div style="display: inline-block; width: 60px; height: 60px; border: 4px solid #e0e7ff; border-top-color: #1e40af; border-radius: 50%; animation: spin 1s linear infinite;"></div>
@@ -75,7 +76,7 @@
         </div>
 
         <div class="screen" id="consentScreen">
-            <h1>&#9992;&#65039; Aviation Leadership Quiz</h1>
+            <h1>Online Testing System</h1>
             <div class="consent-box">
                 <h2>Student Consent &amp; Privacy Notice</h2>
                 <p style="text-align:left;margin-bottom:8px;"><strong>Data Collection:</strong></p>
@@ -92,7 +93,7 @@
         </div>
 
         <div class="screen" id="passwordScreen">
-            <h1>&#9992;&#65039; Aviation Leadership</h1>
+            <h1>Online Testing System</h1>
             <p>Enter Quiz Password</p>
             <div class="password-display" id="passwordDisplay">
                 <div class="digit" data-i="1"></div>
@@ -107,8 +108,9 @@
         </div>
 
         <div class="screen" id="nameScreen">
-            <h1>&#9992;&#65039; Almost There</h1>
-            <p>Enter Your Name</p>
+            <p style="text-align: center; font-size: 13px; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; min-height: 16px;" id="nameCourseName"></p>
+            <h1 id="nameQuizTitle" style="font-size: 24px; margin-bottom: 24px;">Quiz</h1>
+            <p>Enter your name to begin</p>
             <input type="text" id="studentName" placeholder="Type your name" maxlength="120">
             <button class="name-btn" id="beginBtn">Begin Quiz</button>
             <div class="error" id="nameError"></div>
@@ -254,8 +256,20 @@
             timerEnabled: true,
             timeLimitSeconds: DEFAULT_QUIZ_TIME_SECONDS,
             quizId: null,
-            quizTitle: ''
+            quizTitle: '',
+            courseName: ''
         };
+
+        function updateQuizHeaders() {
+            const t = state.quizTitle || 'Quiz';
+            const c = state.courseName || '';
+            document.getElementById('nameQuizTitle').textContent = t;
+            document.getElementById('nameCourseName').textContent = c;
+            document.getElementById('waitingQuizTitle').textContent = t;
+            document.getElementById('waitingCourseName').textContent = c;
+            const banner = document.getElementById('quizTitleBanner');
+            if (banner) banner.textContent = c ? `${c}  •  ${t}` : t;
+        }
 
         computeBrowserFingerprint().then(fp => { state.browserFingerprint = fp; }).catch(() => {});
 
@@ -311,6 +325,8 @@
                 if (r.ok && data.valid) {
                     state.sessionToken = data.sessionToken;
                     state.quizTitle = data.quizTitle || state.quizTitle;
+                    state.courseName = data.courseName || state.courseName;
+                    updateQuizHeaders();
                     showScreen('nameScreen');
                     $('studentName').focus();
                 } else if (r.status === 429) {
@@ -340,7 +356,6 @@
                     const status = await joinWaitingRoom(name);
                     state.quizStatus = status;
                     document.getElementById('waitingStudentName').textContent = `Checked in as: ${name}`;
-                    document.getElementById('waitingQuizTitle').textContent = state.quizTitle || '';
                     if (status === 'active') {
                         await loadQuestionsAndStart();
                     } else {
@@ -358,9 +373,10 @@
                     state.timerEnabled = data.timerEnabled !== false;
                     state.timeLimitSeconds = data.timeLimitSeconds || DEFAULT_QUIZ_TIME_SECONDS;
                     state.quizTitle = data.quizTitle || state.quizTitle;
+                    state.courseName = data.courseName || state.courseName;
+                    updateQuizHeaders();
                     state.currentQ = 0;
                     state.startTime = Date.now();
-                    document.getElementById('quizTitleBanner').textContent = state.quizTitle || '';
                     showScreen('quizScreen');
                     renderQuestion();
                     startTimer();
@@ -492,6 +508,8 @@
                 state.quizStatus = data.status || 'inactive';
                 state.quizId = data.quizId || null;
                 state.quizTitle = data.quizTitle || '';
+                state.courseName = data.courseName || '';
+                updateQuizHeaders();
                 if (data.alreadySubmitted) {
                     try { localStorage.setItem(SUBMITTED_FLAG, '1'); } catch (e) {}
                     showScreen('alreadySubmittedScreen');
@@ -537,6 +555,8 @@
             }
             state.sessionToken = data.sessionToken;
             state.quizTitle = data.quizTitle || state.quizTitle;
+            state.courseName = data.courseName || state.courseName;
+            updateQuizHeaders();
             return data.status;
         }
 
@@ -584,9 +604,10 @@
                 state.timerEnabled = data.timerEnabled !== false;
                 state.timeLimitSeconds = data.timeLimitSeconds || DEFAULT_QUIZ_TIME_SECONDS;
                 state.quizTitle = data.quizTitle || state.quizTitle;
+                state.courseName = data.courseName || state.courseName;
+                updateQuizHeaders();
                 state.currentQ = 0;
                 state.startTime = Date.now();
-                document.getElementById('quizTitleBanner').textContent = state.quizTitle || '';
                 showScreen('quizScreen');
                 renderQuestion();
                 startTimer();

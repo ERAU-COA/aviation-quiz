@@ -28,7 +28,8 @@ export default async function handler(req, res) {
         mode: 'sync',
         status: syncQuiz.status,
         quizId: syncQuiz.id,
-        quizTitle: syncQuiz.title
+        quizTitle: syncQuiz.title,
+        courseName: syncQuiz.courseName
       });
     }
     return res.status(200).json({

@@ -53,7 +53,7 @@ export default async function handler(req, res) {
       event_data: { quiz_id: quiz.id }
     });
 
-    return res.status(200).json({ valid: true, sessionToken: token, quizTitle: quiz.title });
+    return res.status(200).json({ valid: true, sessionToken: token, quizTitle: quiz.title, courseName: quiz.courseName });
   } catch (e) {
     console.error('validate-password error:', e);
     return res.status(500).json({ error: 'Internal server error' });

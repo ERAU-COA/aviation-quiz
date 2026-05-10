@@ -27,26 +27,33 @@ export function applyCors(req, res) {
   return false;
 }
 
+const QUIZ_FIELDS = 'id, title, mode, status, password, time_limit_minutes, timer_enabled, course_id, week_number, session_number, courses(name)';
+
+function withCourseName(quiz) {
+  if (!quiz) return null;
+  return { ...quiz, courseName: quiz.courses?.name || null };
+}
+
 export async function getActiveSyncQuiz(supabase) {
   const { data } = await supabase
     .from('quizzes')
-    .select('id, title, mode, status, time_limit_minutes, timer_enabled, course_id, week_number, session_number')
+    .select(QUIZ_FIELDS)
     .eq('mode', 'sync')
     .in('status', ['waiting', 'active'])
     .order('id', { ascending: false })
     .limit(1)
     .maybeSingle();
-  return data || null;
+  return withCourseName(data);
 }
 
 export async function findQuizByPassword(supabase, password) {
   if (typeof password !== 'string' || !password) return null;
   const { data } = await supabase
     .from('quizzes')
-    .select('id, title, mode, password, time_limit_minutes, timer_enabled, course_id, week_number, session_number')
+    .select(QUIZ_FIELDS)
     .eq('password', password)
     .order('id', { ascending: false })
     .limit(1)
     .maybeSingle();
-  return data || null;
+  return withCourseName(data);
 }

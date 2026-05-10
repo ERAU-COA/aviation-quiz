@@ -23,7 +23,7 @@ export default async function handler(req, res) {
   try {
     const { data: quiz } = await supabase
       .from('quizzes')
-      .select('time_limit_minutes, timer_enabled, title')
+      .select('time_limit_minutes, timer_enabled, title, courses(name)')
       .eq('id', quizId)
       .single();
     const { data: questions, error } = await supabase
@@ -44,6 +44,7 @@ export default async function handler(req, res) {
       questions,
       totalQuestions: questions.length,
       quizTitle: quiz?.title,
+      courseName: quiz?.courses?.name || null,
       timerEnabled: quiz?.timer_enabled !== false,
       timeLimitSeconds: Math.max(60, Math.floor((quiz?.time_limit_minutes ?? 5) * 60))
     });
