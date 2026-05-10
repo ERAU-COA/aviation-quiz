@@ -6,8 +6,23 @@
     <title>Online Testing System</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); min-height: 100vh; display: flex; justify-content: center; align-items: center; padding: 20px; }
-        .container { background: white; width: 100%; max-width: 500px; border-radius: 12px; padding: 40px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); }
+        body { font-family: Arial, sans-serif; background: linear-gradient(135deg, #1e3a8a 0%, #1e40af 100%); min-height: 100vh; display: flex; justify-content: center; align-items: flex-start; padding: 16px; }
+        .container { background: white; width: 100%; max-width: 560px; border-radius: 12px; padding: 28px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); margin: auto 0; }
+        @media (max-width: 480px) {
+            body { padding: 8px; }
+            .container { padding: 18px 16px; border-radius: 10px; }
+            h1 { font-size: 22px; }
+            .quiz-header { padding: 10px 14px; }
+            .timer { font-size: 18px; }
+            .question-text { font-size: 16px; }
+            .option { padding: 10px 12px; font-size: 14px; }
+            .name-btn { padding: 12px; font-size: 16px; }
+        }
+        @media (max-height: 700px) {
+            body { align-items: flex-start; }
+            .container { padding: 16px; }
+            .quiz-header { margin-bottom: 12px; }
+        }
         .screen { display: none; }
         .screen.active { display: block; }
         h1 { color: #1e40af; margin-bottom: 10px; text-align: center; }
@@ -24,15 +39,17 @@
         .btn:disabled { opacity: 0.5; cursor: not-allowed; }
         .btn.delete { background: #fecaca; color: #dc2626; }
         .btn.submit { grid-column: 1 / -1; background: #1e40af; color: white; }
-        input { width: 100%; padding: 15px; font-size: 18px; border: 2px solid #047857; border-radius: 8px; text-align: center; margin-bottom: 20px; }
-        input:focus { outline: none; border-color: #059669; background: #f0fdf4; }
-        .name-btn { width: 100%; padding: 15px; font-size: 18px; font-weight: bold; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; }
-        .quiz-header { background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: white; padding: 20px; border-radius: 8px; display: flex; justify-content: space-between; margin-bottom: 20px; }
-        .timer { font-size: 24px; font-weight: bold; }
+        input[type="text"], input[type="url"], input[type="password"], input[type="email"], input[type="number"] { width: 100%; padding: 14px; font-size: 17px; border: 2px solid #047857; border-radius: 8px; text-align: center; margin-bottom: 16px; }
+        input[type="text"]:focus, input[type="url"]:focus, input[type="password"]:focus, input[type="email"]:focus, input[type="number"]:focus { outline: none; border-color: #059669; background: #f0fdf4; }
+        .name-btn { width: 100%; padding: 14px; font-size: 17px; font-weight: bold; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; }
+        .quiz-header { background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%); color: white; padding: 14px 18px; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .timer { font-size: 22px; font-weight: bold; }
         .timer.warning { color: #fca5a5; }
-        .question-text { font-size: 20px; font-weight: bold; color: #111827; margin-bottom: 20px; }
-        .options { display: flex; flex-direction: column; gap: 12px; margin-bottom: 20px; }
-        .option { padding: 15px; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 16px; display: flex; align-items: center; gap: 10px; }
+        .question-text { font-size: 17px; font-weight: 600; color: #111827; margin-bottom: 14px; line-height: 1.4; }
+        .options { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+        .option { padding: 11px 14px; border: 2px solid #e5e7eb; border-radius: 8px; cursor: pointer; font-size: 15px; display: flex; align-items: flex-start; gap: 10px; line-height: 1.35; }
+        .option input[type="radio"] { margin: 3px 0 0 0; flex-shrink: 0; width: auto; }
+        .option > span { flex: 1; min-width: 0; }
         .option:hover { border-color: #7c3aed; background: #faf5ff; }
         .option.selected { background: #ede9fe; border-color: #7c3aed; }
         .submit-btn { width: 100%; padding: 15px; font-size: 18px; font-weight: bold; background: #7c3aed; color: white; border: none; border-radius: 8px; cursor: pointer; margin-top: 10px; }
