@@ -34,18 +34,6 @@ function withCourseName(quiz) {
   return { ...quiz, courseName: quiz.courses?.name || null };
 }
 
-export async function getActiveSyncQuiz(supabase) {
-  const { data } = await supabase
-    .from('quizzes')
-    .select(QUIZ_FIELDS)
-    .eq('mode', 'sync')
-    .in('status', ['waiting', 'active'])
-    .order('id', { ascending: false })
-    .limit(1)
-    .maybeSingle();
-  return withCourseName(data);
-}
-
 export async function findQuizByPassword(supabase, password) {
   if (typeof password !== 'string' || !password) return null;
   const { data } = await supabase
@@ -54,6 +42,15 @@ export async function findQuizByPassword(supabase, password) {
     .eq('password', password)
     .order('id', { ascending: false })
     .limit(1)
+    .maybeSingle();
+  return withCourseName(data);
+}
+
+export async function findQuizById(supabase, id) {
+  const { data } = await supabase
+    .from('quizzes')
+    .select(QUIZ_FIELDS)
+    .eq('id', id)
     .maybeSingle();
   return withCourseName(data);
 }

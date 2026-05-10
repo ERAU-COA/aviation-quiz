@@ -48,7 +48,7 @@
 </head>
 <body>
     <div class="container">
-        <div class="screen active" id="loadingScreen">
+        <div class="screen" id="loadingScreen">
             <h1>Online Testing System</h1>
             <p>Loading...</p>
         </div>
@@ -75,7 +75,7 @@
             <style>@keyframes spin { to { transform: rotate(360deg); } }</style>
         </div>
 
-        <div class="screen" id="consentScreen">
+        <div class="screen active" id="consentScreen">
             <h1>Online Testing System</h1>
             <div class="consent-box">
                 <h2>Student Consent &amp; Privacy Notice</h2>
@@ -319,22 +319,31 @@
                 const r = await fetch(`${API_BASE_URL}/api/validate-password`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: state.password })
+                    body: JSON.stringify({ password: state.password, deviceId: state.deviceId })
                 });
                 const data = await r.json();
                 if (r.ok && data.valid) {
-                    state.sessionToken = data.sessionToken;
-                    state.quizTitle = data.quizTitle || state.quizTitle;
-                    state.courseName = data.courseName || state.courseName;
+                    state.quizId = data.quizId;
+                    state.quizTitle = data.quizTitle || '';
+                    state.courseName = data.courseName || '';
+                    state.mode = data.mode;
+                    state.quizStatus = data.status || 'active';
+                    state.sessionToken = data.sessionToken || null;
                     updateQuizHeaders();
-                    showScreen('nameScreen');
-                    $('studentName').focus();
+                    if (data.alreadySubmitted) {
+                        try { localStorage.setItem(SUBMITTED_FLAG, '1'); } catch (e) {}
+                        showScreen('alreadySubmittedScreen');
+                    } else {
+                        try { localStorage.removeItem(SUBMITTED_FLAG); } catch (e) {}
+                        showScreen('nameScreen');
+                        $('studentName').focus();
+                    }
                 } else if (r.status === 429) {
                     setError('passwordError', data.error || 'Too many attempts. Please wait.');
                     state.password = '';
                     renderPassword();
                 } else {
-                    setError('passwordError', 'Wrong password.');
+                    setError('passwordError', data.error || 'Wrong passcode.');
                     state.password = '';
                     renderPassword();
                 }
@@ -496,58 +505,20 @@
         }
 
         async function fetchQuizStatus() {
-            const r = await fetch(`${API_BASE_URL}/api/check-status?deviceId=${encodeURIComponent(state.deviceId)}`);
+            const params = new URLSearchParams({ deviceId: state.deviceId, quizId: String(state.quizId) });
+            const r = await fetch(`${API_BASE_URL}/api/check-status?${params}`);
             return await r.json();
         }
 
-        async function checkSubmissionStatus() {
-            showScreen('loadingScreen');
-            try {
-                const data = await fetchQuizStatus();
-                state.mode = data.mode || 'password';
-                state.quizStatus = data.status || 'inactive';
-                state.quizId = data.quizId || null;
-                state.quizTitle = data.quizTitle || '';
-                state.courseName = data.courseName || '';
-                updateQuizHeaders();
-                if (data.alreadySubmitted) {
-                    try { localStorage.setItem(SUBMITTED_FLAG, '1'); } catch (e) {}
-                    showScreen('alreadySubmittedScreen');
-                    return;
-                }
-                try { localStorage.removeItem(SUBMITTED_FLAG); } catch (e) {}
-                showScreen('consentScreen');
-            } catch (e) {
-                let cached = null;
-                try { cached = localStorage.getItem(SUBMITTED_FLAG); } catch (err) {}
-                if (cached === '1') showScreen('alreadySubmittedScreen');
-                else showScreen('consentScreen');
-            }
-        }
-
         function afterConsent() {
-            if (state.mode === 'sync') {
-                if (state.quizStatus === 'inactive') {
-                    document.getElementById('sessionClosedMessage').textContent = 'The quiz session is not yet open. Please wait for your instructor.';
-                    showScreen('sessionClosedScreen');
-                    return;
-                }
-                if (state.quizStatus === 'ended') {
-                    document.getElementById('sessionClosedMessage').textContent = 'This quiz session has ended.';
-                    showScreen('sessionClosedScreen');
-                    return;
-                }
-                showScreen('nameScreen');
-            } else {
-                showScreen('passwordScreen');
-            }
+            showScreen('passwordScreen');
         }
 
         async function joinWaitingRoom(name) {
             const r = await fetch(`${API_BASE_URL}/api/join-waiting-room`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ studentName: name, deviceId: state.deviceId })
+                body: JSON.stringify({ studentName: name, deviceId: state.deviceId, quizId: state.quizId })
             });
             const data = await r.json();
             if (!r.ok || !data.valid) {
@@ -624,7 +595,6 @@
             $('nextBtn').onclick = () => { state.currentQ++; renderQuestion(); };
             $('submitBtn').onclick = submitQuiz;
             $('studentName').addEventListener('keydown', e => { if (e.key === 'Enter') beginQuiz(); });
-            checkSubmissionStatus();
         });
     </script>
 </body>

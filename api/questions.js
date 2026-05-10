@@ -23,9 +23,12 @@ export default async function handler(req, res) {
   try {
     const { data: quiz } = await supabase
       .from('quizzes')
-      .select('time_limit_minutes, timer_enabled, title, courses(name)')
+      .select('time_limit_minutes, timer_enabled, title, mode, status, courses(name)')
       .eq('id', quizId)
       .single();
+    if (quiz?.mode === 'sync' && quiz?.status !== 'active') {
+      return res.status(403).json({ error: 'session_not_active', message: 'The instructor has not started this quiz yet.' });
+    }
     const { data: questions, error } = await supabase
       .from('questions')
       .select('id, question_text, option_a, option_b, option_c, option_d')

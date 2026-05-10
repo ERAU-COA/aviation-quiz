@@ -3,6 +3,7 @@ import { getSupabase, getClientIp, applyCors, findQuizByPassword } from './_lib.
 
 const RATE_WINDOW_MINUTES = 5;
 const RATE_MAX_FAILURES = 10;
+const DEVICE_ID_PATTERN = /^[a-f0-9-]{8,64}$/i;
 
 export default async function handler(req, res) {
   if (applyCors(req, res)) return;
@@ -12,7 +13,7 @@ export default async function handler(req, res) {
   const ip = getClientIp(req);
 
   try {
-    const { password } = req.body || {};
+    const { password, deviceId } = req.body || {};
 
     if (ip) {
       const since = new Date(Date.now() - RATE_WINDOW_MINUTES * 60 * 1000).toISOString();
@@ -39,21 +40,58 @@ export default async function handler(req, res) {
         ip_address: ip,
         event_data: { length: typeof password === 'string' ? password.length : 0 }
       });
-      return res.status(401).json({ valid: false });
+      return res.status(401).json({ valid: false, error: 'Wrong passcode.' });
+    }
+
+    let alreadySubmitted = false;
+    if (deviceId && DEVICE_ID_PATTERN.test(deviceId)) {
+      const { count } = await supabase
+        .from('submissions')
+        .select('id', { count: 'exact', head: true })
+        .eq('quiz_id', quiz.id)
+        .eq('device_id', deviceId);
+      alreadySubmitted = (count ?? 0) > 0;
     }
 
     if (quiz.mode === 'sync') {
-      return res.status(400).json({ valid: false, error: 'This quiz is in synchronous mode. Wait for instructor to begin.' });
+      if (!['waiting', 'active'].includes(quiz.status)) {
+        return res.status(403).json({
+          valid: false,
+          error: 'This quiz session is not open yet. Wait for your instructor to start it, then try again.'
+        });
+      }
+      await supabase.from('audit_log').insert({
+        event_type: 'passcode_validated',
+        ip_address: ip,
+        event_data: { quiz_id: quiz.id, mode: 'sync', status: quiz.status }
+      });
+      return res.status(200).json({
+        valid: true,
+        mode: 'sync',
+        status: quiz.status,
+        quizId: quiz.id,
+        quizTitle: quiz.title,
+        courseName: quiz.courseName,
+        alreadySubmitted
+      });
     }
 
     const token = jwt.sign({ ip, quizId: quiz.id }, process.env.JWT_SECRET, { expiresIn: '6h' });
     await supabase.from('audit_log').insert({
-      event_type: 'password_validated',
+      event_type: 'passcode_validated',
       ip_address: ip,
-      event_data: { quiz_id: quiz.id }
+      event_data: { quiz_id: quiz.id, mode: 'password' }
     });
 
-    return res.status(200).json({ valid: true, sessionToken: token, quizTitle: quiz.title, courseName: quiz.courseName });
+    return res.status(200).json({
+      valid: true,
+      mode: 'password',
+      sessionToken: token,
+      quizId: quiz.id,
+      quizTitle: quiz.title,
+      courseName: quiz.courseName,
+      alreadySubmitted
+    });
   } catch (e) {
     console.error('validate-password error:', e);
     return res.status(500).json({ error: 'Internal server error' });
