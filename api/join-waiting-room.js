@@ -1,14 +1,22 @@
+import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
-import { getSupabase, getClientIp, applyCors, findQuizById } from './_lib.js';
+import {
+  getSupabase,
+  getClientIp,
+  applyCors,
+  findQuizById,
+  findActiveTermination,
+  terminationPayload,
+  DEVICE_ID_PATTERN
+} from './_lib.js';
 
-const DEVICE_ID_PATTERN = /^[a-f0-9-]{8,64}$/i;
 const MAX_NAME_LENGTH = 120;
 
 export default async function handler(req, res) {
   if (applyCors(req, res)) return;
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-  const { studentName, deviceId, quizId } = req.body || {};
+  const { studentName, deviceId, quizId, browserFingerprint } = req.body || {};
   if (!studentName || typeof studentName !== 'string') return res.status(400).json({ error: 'Missing student name' });
   if (!deviceId || !DEVICE_ID_PATTERN.test(deviceId)) return res.status(400).json({ error: 'Missing or invalid deviceId' });
   if (!Number.isFinite(Number(quizId))) return res.status(400).json({ error: 'Missing quizId' });
@@ -39,6 +47,23 @@ export default async function handler(req, res) {
     }
 
     const cleanName = studentName.trim().slice(0, MAX_NAME_LENGTH);
+    const cleanFingerprint = typeof browserFingerprint === 'string' && /^[a-f0-9]{32,128}$/i.test(browserFingerprint)
+      ? browserFingerprint
+      : null;
+
+    const termination = await findActiveTermination(supabase, quiz.id, {
+      deviceId,
+      browserFingerprint: cleanFingerprint,
+      studentName: cleanName
+    });
+    if (termination) {
+      return res.status(403).json({
+        error: 'attempt_terminated',
+        message: 'Your attempt at this quiz was terminated. Contact your instructor.',
+        ...terminationPayload(termination)
+      });
+    }
+
     const ip = getClientIp(req);
 
     await supabase
@@ -48,13 +73,18 @@ export default async function handler(req, res) {
         { onConflict: 'quiz_id,device_id' }
       );
 
-    const token = jwt.sign({ ip, quizId: quiz.id, sync: true }, process.env.JWT_SECRET, { expiresIn: '6h' });
+    const token = jwt.sign(
+      { ip, quizId: quiz.id, sync: true, deviceId, sid: randomUUID() },
+      process.env.JWT_SECRET,
+      { expiresIn: '6h' }
+    );
     return res.status(200).json({
       valid: true,
       sessionToken: token,
       status: quiz.status,
       quizTitle: quiz.title,
-      courseName: quiz.courseName
+      courseName: quiz.courseName,
+      focusPolicyEnabled: quiz.focus_policy_enabled !== false
     });
   } catch (e) {
     console.error('join-waiting-room error:', e);

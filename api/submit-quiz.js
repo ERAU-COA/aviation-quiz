@@ -1,5 +1,11 @@
 import jwt from 'jsonwebtoken';
-import { getSupabase, getClientIp, applyCors } from './_lib.js';
+import {
+  getSupabase,
+  getClientIp,
+  applyCors,
+  findActiveTermination,
+  terminationPayload
+} from './_lib.js';
 
 const MAX_NAME_LENGTH = 120;
 
@@ -26,11 +32,28 @@ export default async function handler(req, res) {
   }
   const quizId = decoded?.quizId;
   if (!quizId) return res.status(401).json({ error: 'Token missing quizId' });
+  if (decoded?.deviceId && decoded.deviceId !== deviceId) {
+    return res.status(401).json({ error: 'Session does not match this device' });
+  }
 
   const supabase = getSupabase();
   const ip = getClientIp(req);
   const userAgent = req.headers['user-agent'] || null;
   const cleanName = String(studentName).trim().slice(0, MAX_NAME_LENGTH);
+
+  // A terminated attempt can never be handed in, even if the page is still open.
+  const termination = await findActiveTermination(supabase, quizId, {
+    deviceId,
+    browserFingerprint: cleanFingerprint,
+    studentName: cleanName
+  });
+  if (termination) {
+    return res.status(403).json({
+      error: 'attempt_terminated',
+      message: 'Your attempt at this quiz was terminated. Contact your instructor.',
+      ...terminationPayload(termination)
+    });
+  }
 
   const { count: deviceMatch, error: dupeErr } = await supabase
     .from('submissions')

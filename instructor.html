@@ -51,6 +51,11 @@
         .badge { display: inline-block; padding: 2px 8px; font-size: 11px; border-radius: 4px; font-weight: 600; }
         .badge.correct { background: rgba(16, 185, 129, 0.2); color: #6ee7b7; }
         .badge.incorrect { background: rgba(239, 68, 68, 0.2); color: #fca5a5; }
+        .badge.cleared { background: rgba(148, 163, 184, 0.2); color: #cbd5e1; }
+        .termination-row { border-left: 3px solid #dc2626; cursor: default; }
+        .termination-row:hover { border-color: #334155; border-left-color: #dc2626; }
+        .termination-row.cleared { border-left-color: #64748b; opacity: 0.75; }
+        .termination-row.cleared:hover { border-left-color: #64748b; }
         .stat-card { background: #1e293b; padding: 14px 16px; border-radius: 8px; border: 1px solid #334155; margin-bottom: 12px; }
         .stat-card .qtext { font-weight: 500; margin-bottom: 8px; }
         .bar-container { display: grid; grid-template-columns: 24px 1fr 60px; gap: 8px; align-items: center; margin: 4px 0; font-size: 13px; }
@@ -211,6 +216,12 @@
                     <h2>Submissions</h2>
                     <button class="secondary" id="refreshSubsBtn">Refresh</button>
                 </div>
+                <div id="terminationsSection" style="display: none;">
+                    <h3 style="color: #fca5a5;">Terminated attempts <span class="muted" id="terminationsCount" style="font-weight: 400;"></span></h3>
+                    <p class="muted" style="font-size: 12px; margin-bottom: 12px;">Attempts the server ended because the student left the quiz page. Nothing was submitted, so these students have no score. <strong>Allow retake</strong> lifts the block but keeps the record.</p>
+                    <div id="terminationsList"></div>
+                    <hr style="border: none; border-top: 1px solid #334155; margin: 22px 0;">
+                </div>
                 <div id="submissionsList"></div>
             </div>
 
@@ -259,6 +270,21 @@
                         <button id="saveTimerBtn">Save</button>
                     </div>
                     <div class="error" id="timerError"></div>
+                </div>
+
+                <div class="card">
+                    <h2>Academic Integrity</h2>
+                    <div class="row" style="margin-bottom: 14px;">
+                        <label style="display: flex; gap: 10px; align-items: flex-start; cursor: pointer; min-width: auto;">
+                            <input type="checkbox" id="focusPolicyToggle" style="width: 18px; height: 18px; margin-top: 3px; flex-shrink: 0;">
+                            <span>
+                                <strong>End the attempt if the student leaves the quiz page</strong>
+                                <span class="muted" style="display: block; margin-top: 4px; font-size: 13px; line-height: 1.5;">Switching tabs or apps, minimising the browser, moving focus to another window, iPad Split View or other split-screen multitasking, and refreshing or closing the page all end the attempt. The block is recorded and enforced on the server, so reopening or refreshing the page will not restart the quiz. Terminated attempts appear under Submissions.</span>
+                            </span>
+                        </label>
+                    </div>
+                    <button id="saveFocusPolicyBtn">Save</button>
+                    <div class="error" id="focusPolicyError"></div>
                 </div>
 
                 <div class="card" id="syncControls" style="display: none;">
@@ -629,6 +655,8 @@
         }
 
         function clearTabs() {
+            $('terminationsSection').style.display = 'none';
+            $('terminationsList').innerHTML = '';
             $('pwdDisplay').textContent = '(no quiz selected)';
             $('questionList').innerHTML = '<p class="muted">Select a quiz first.</p>';
             $('submissionsList').innerHTML = '<p class="muted">Select a quiz first.</p>';
@@ -1044,6 +1072,7 @@ Answer: B`;
         async function loadSubmissions() {
             const list = $('submissionsList');
             list.innerHTML = '<p class="muted">Loading...</p>';
+            loadTerminations();
             try {
                 const data = await api(`/api/instructor?action=submissions&quizId=${currentQuizId}`);
                 if (!data.submissions?.length) { list.innerHTML = '<p class="muted">No submissions yet.</p>'; return; }
@@ -1103,6 +1132,143 @@ Answer: B`;
             el.innerHTML = html;
         }
 
+        function terminationReasonLabel(t) {
+            const labels = {
+                tab_hidden: 'Left the page',
+                window_blur: 'Window lost focus',
+                page_exit: 'Closed / refreshed',
+                split_view: 'Split screen',
+                unknown: 'Lost focus'
+            };
+            return labels[t.reason] || 'Lost focus';
+        }
+
+        function terminationRow(t) {
+            const cleared = !!t.cleared_at;
+            const row = document.createElement('div');
+            row.className = 'submission-row termination-row' + (cleared ? ' cleared' : '');
+            row.innerHTML = `
+                <div class="meta">
+                    <strong class="tname"></strong>
+                    <span class="badge ${cleared ? 'cleared' : 'incorrect'} tstate"></span>
+                    <span class="muted tprog"></span>
+                    <span class="muted twhen"></span>
+                    <button class="secondary small tact"></button>
+                </div>
+                <div class="submission-detail tdetail"></div>
+            `;
+
+            row.querySelector('.tname').textContent = t.student_name || '(name not captured)';
+            row.querySelector('.tstate').textContent = cleared ? 'Cleared' : terminationReasonLabel(t);
+
+            const answered = t.answered_count == null ? null : t.answered_count;
+            const total = t.questions_total == null ? null : t.questions_total;
+            row.querySelector('.tprog').textContent = total ? `${answered ?? 0}/${total} answered` : '—';
+            row.querySelector('.twhen').textContent = t.terminated_at
+                ? new Date(t.terminated_at).toLocaleString()
+                : '—';
+
+            const detail = row.querySelector('.tdetail');
+            const why = document.createElement('p');
+            why.style.marginBottom = '8px';
+            why.textContent = t.detail || 'The quiz page lost visibility or focus.';
+            detail.appendChild(why);
+
+            const elapsed = Number.isFinite(t.elapsed_seconds)
+                ? `${Math.floor(t.elapsed_seconds / 60)}m ${t.elapsed_seconds % 60}s into the quiz`
+                : 'time not captured';
+            const meta = document.createElement('p');
+            meta.className = 'muted';
+            meta.textContent = `${elapsed} • trigger: ${t.event_type || 'n/a'} • IP: ${t.ip_address || '—'}`;
+            detail.appendChild(meta);
+
+            if (t.user_agent) {
+                const ua = document.createElement('p');
+                ua.className = 'muted';
+                ua.style.marginTop = '4px';
+                ua.style.wordBreak = 'break-word';
+                ua.textContent = t.user_agent;
+                detail.appendChild(ua);
+            }
+
+            if (cleared) {
+                const note = document.createElement('p');
+                note.className = 'muted';
+                note.style.marginTop = '6px';
+                note.textContent = `Cleared ${new Date(t.cleared_at).toLocaleString()} — ${t.cleared_note || 'retake allowed'}`;
+                detail.appendChild(note);
+            }
+
+            const btn = row.querySelector('.tact');
+            btn.textContent = cleared ? 'Re-block' : 'Allow retake';
+            btn.onclick = async (e) => {
+                e.stopPropagation();
+                const who = t.student_name || 'this student';
+                const msg = cleared
+                    ? `Re-apply the block for ${who}? They will not be able to take this quiz again.`
+                    : `Allow ${who} to retake this quiz? The termination stays on record.`;
+                if (!confirm(msg)) return;
+                btn.disabled = true;
+                try {
+                    await api(`/api/instructor?action=terminations&quizId=${currentQuizId}&id=${t.id}`, {
+                        method: 'PUT',
+                        body: JSON.stringify({ cleared: !cleared })
+                    });
+                    await loadTerminations();
+                } catch (err) {
+                    btn.disabled = false;
+                    alert('Failed: ' + err.message);
+                }
+            };
+
+            row.onclick = (e) => {
+                if (e.target === btn) return;
+                detail.style.display = detail.style.display === 'block' ? 'none' : 'block';
+            };
+            detail.style.display = 'none';
+            return row;
+        }
+
+        async function loadTerminations() {
+            const section = $('terminationsSection');
+            const list = $('terminationsList');
+            if (!currentQuizId) { section.style.display = 'none'; return; }
+            try {
+                const data = await api(`/api/instructor?action=terminations&quizId=${currentQuizId}`);
+                const rows = data.terminations || [];
+                if (!rows.length) {
+                    section.style.display = 'none';
+                    list.innerHTML = '';
+                    return;
+                }
+                const active = rows.filter(t => !t.cleared_at).length;
+                $('terminationsCount').textContent = `(${active} blocking, ${rows.length} total)`;
+                list.innerHTML = '';
+                rows.forEach(t => list.appendChild(terminationRow(t)));
+                section.style.display = 'block';
+            } catch (e) {
+                section.style.display = 'block';
+                $('terminationsCount').textContent = '';
+                list.innerHTML = `<p class="error">${escapeHtml(e.message)}</p>`;
+            }
+        }
+
+        async function saveFocusPolicy() {
+            $('focusPolicyError').textContent = '';
+            const enabled = $('focusPolicyToggle').checked;
+            try {
+                await api(`/api/instructor?action=quiz&quizId=${currentQuizId}`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ focus_policy_enabled: enabled })
+                });
+                $('focusPolicyError').style.color = '#6ee7b7';
+                $('focusPolicyError').textContent = 'Saved.';
+                setTimeout(() => { $('focusPolicyError').textContent = ''; $('focusPolicyError').style.color = ''; }, 1500);
+            } catch (e) {
+                $('focusPolicyError').textContent = e.message;
+            }
+        }
+
         async function loadStats() {
             const body = $('statsBody');
             body.innerHTML = '<p class="muted">Loading...</p>';
@@ -1145,6 +1311,7 @@ Answer: B`;
                 currentStatus = data.quiz?.status || 'inactive';
                 document.querySelector(`input[name=mode][value=${currentMode}]`).checked = true;
                 $('timerEnabledToggle').checked = data.quiz?.timer_enabled !== false;
+                $('focusPolicyToggle').checked = data.quiz?.focus_policy_enabled !== false;
                 $('timerMinutesInput').value = data.quiz?.time_limit_minutes ?? 5;
                 $('timerMinutesRow').style.opacity = $('timerEnabledToggle').checked ? '1' : '0.5';
                 renderModeUI();
@@ -1266,6 +1433,7 @@ Answer: B`;
             document.querySelectorAll('input[name=mode]').forEach(r => r.onchange = (e) => setMode(e.target.value));
             $('timerEnabledToggle').onchange = () => { $('timerMinutesRow').style.opacity = $('timerEnabledToggle').checked ? '1' : '0.5'; };
             $('saveTimerBtn').onclick = saveTimer;
+            $('saveFocusPolicyBtn').onclick = saveFocusPolicy;
             $('openWaitingBtn').onclick = () => setStatus('waiting');
             $('beginQuizBtn').onclick = () => setStatus('active');
             $('endQuizBtn').onclick = () => setStatus('ended');

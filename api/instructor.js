@@ -1,5 +1,5 @@
 import jwt from 'jsonwebtoken';
-import { getSupabase, applyCors } from './_lib.js';
+import { getSupabase, applyCors, isMissingTerminationTable } from './_lib.js';
 
 function requireInstructor(req, res) {
   const auth = req.headers.authorization || '';
@@ -119,17 +119,23 @@ export default async function handler(req, res) {
       const quizId = getQuizId(req);
       if (!quizId) return res.status(400).json({ error: 'Missing quizId' });
       if (req.method === 'GET') {
-        const { data, error } = await supabase
+        const BASE = 'id, course_id, title, description, password, time_limit_minutes, timer_enabled, week_number, session_number, mode, status';
+        let { data, error } = await supabase
           .from('quizzes')
-          .select('id, course_id, title, description, password, time_limit_minutes, timer_enabled, week_number, session_number, mode, status')
+          .select(`${BASE}, focus_policy_enabled`)
           .eq('id', quizId)
           .single();
+        if (error && /focus_policy_enabled/.test(error.message || '')) {
+          // focus-policy.sql has not been run yet - keep the portal usable.
+          ({ data, error } = await supabase.from('quizzes').select(BASE).eq('id', quizId).single());
+        }
         if (error) throw error;
         return res.status(200).json({ quiz: data });
       }
       if (req.method === 'PUT') {
-        const { title, description, password, time_limit_minutes, timer_enabled, week_number, session_number, course_id, mode } = req.body || {};
+        const { title, description, password, time_limit_minutes, timer_enabled, focus_policy_enabled, week_number, session_number, course_id, mode } = req.body || {};
         const update = {};
+        if (typeof focus_policy_enabled === 'boolean') update.focus_policy_enabled = focus_policy_enabled;
         if (typeof title === 'string') update.title = title.slice(0, 200);
         if (typeof description === 'string') update.description = description.slice(0, 1000);
         if (typeof password === 'string' && password.length > 0) update.password = password.slice(0, 100);
@@ -302,6 +308,55 @@ export default async function handler(req, res) {
         if (!Number.isFinite(id)) return res.status(400).json({ error: 'Missing submission id' });
         const { error } = await supabase.from('submissions').delete().eq('id', id);
         if (error) throw error;
+        return res.status(200).json({ success: true });
+      }
+      return res.status(405).json({ error: 'Method not allowed' });
+    }
+
+    if (action === 'terminations') {
+      const quizId = getQuizId(req);
+      if (!quizId) return res.status(400).json({ error: 'Missing quizId' });
+
+      if (req.method === 'GET') {
+        const { data, error } = await supabase
+          .from('attempt_terminations')
+          .select('id, student_name, device_id, reason, detail, event_type, answered_count, questions_total, elapsed_seconds, ip_address, user_agent, terminated_at, cleared_at, cleared_note')
+          .eq('quiz_id', quizId)
+          .order('terminated_at', { ascending: false });
+        if (error) {
+          if (isMissingTerminationTable(error)) {
+            return res.status(200).json({ terminations: [], unavailable: true });
+          }
+          throw error;
+        }
+        return res.status(200).json({ terminations: data || [] });
+      }
+
+      // Terminations are never deleted. Granting a retake soft-clears the row so
+      // the record of what happened survives.
+      if (req.method === 'PUT') {
+        const id = Number(req.query?.id);
+        if (!Number.isFinite(id)) return res.status(400).json({ error: 'Missing termination id' });
+        const { cleared, note } = req.body || {};
+        const update = cleared === false
+          ? { cleared_at: null, cleared_note: null }
+          : {
+              cleared_at: new Date().toISOString(),
+              cleared_note: typeof note === 'string' && note.trim()
+                ? note.trim().slice(0, 300)
+                : 'Retake allowed by instructor'
+            };
+        const { error } = await supabase
+          .from('attempt_terminations')
+          .update(update)
+          .eq('id', id)
+          .eq('quiz_id', quizId);
+        if (error) {
+          if (error.code === '23505') {
+            return res.status(409).json({ error: 'A newer termination is already blocking this device.' });
+          }
+          throw error;
+        }
         return res.status(200).json({ success: true });
       }
       return res.status(405).json({ error: 'Method not allowed' });

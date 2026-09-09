@@ -1,9 +1,17 @@
+import { randomUUID } from 'crypto';
 import jwt from 'jsonwebtoken';
-import { getSupabase, getClientIp, applyCors, findQuizByPassword } from './_lib.js';
+import {
+  getSupabase,
+  getClientIp,
+  applyCors,
+  findQuizByPassword,
+  findActiveTermination,
+  terminationPayload,
+  DEVICE_ID_PATTERN
+} from './_lib.js';
 
 const RATE_WINDOW_MINUTES = 5;
 const RATE_MAX_FAILURES = 10;
-const DEVICE_ID_PATTERN = /^[a-f0-9-]{8,64}$/i;
 
 export default async function handler(req, res) {
   if (applyCors(req, res)) return;
@@ -14,6 +22,7 @@ export default async function handler(req, res) {
 
   try {
     const { password, deviceId } = req.body || {};
+    const validDeviceId = typeof deviceId === 'string' && DEVICE_ID_PATTERN.test(deviceId) ? deviceId : null;
 
     if (ip) {
       const since = new Date(Date.now() - RATE_WINDOW_MINUTES * 60 * 1000).toISOString();
@@ -44,14 +53,28 @@ export default async function handler(req, res) {
     }
 
     let alreadySubmitted = false;
-    if (deviceId && DEVICE_ID_PATTERN.test(deviceId)) {
+    if (validDeviceId) {
       const { count } = await supabase
         .from('submissions')
         .select('id', { count: 'exact', head: true })
         .eq('quiz_id', quiz.id)
-        .eq('device_id', deviceId);
+        .eq('device_id', validDeviceId);
       alreadySubmitted = (count ?? 0) > 0;
     }
+
+    // A terminated attempt stays terminated across refreshes and reopens.
+    const termination = validDeviceId
+      ? await findActiveTermination(supabase, quiz.id, { deviceId: validDeviceId })
+      : null;
+
+    const shared = {
+      quizId: quiz.id,
+      quizTitle: quiz.title,
+      courseName: quiz.courseName,
+      alreadySubmitted,
+      focusPolicyEnabled: quiz.focus_policy_enabled !== false,
+      ...terminationPayload(termination)
+    };
 
     if (quiz.mode === 'sync') {
       if (!['waiting', 'active'].includes(quiz.status)) {
@@ -69,14 +92,15 @@ export default async function handler(req, res) {
         valid: true,
         mode: 'sync',
         status: quiz.status,
-        quizId: quiz.id,
-        quizTitle: quiz.title,
-        courseName: quiz.courseName,
-        alreadySubmitted
+        ...shared
       });
     }
 
-    const token = jwt.sign({ ip, quizId: quiz.id }, process.env.JWT_SECRET, { expiresIn: '6h' });
+    const token = jwt.sign(
+      { ip, quizId: quiz.id, deviceId: validDeviceId || undefined, sid: randomUUID() },
+      process.env.JWT_SECRET,
+      { expiresIn: '6h' }
+    );
     await supabase.from('audit_log').insert({
       event_type: 'passcode_validated',
       ip_address: ip,
@@ -87,10 +111,7 @@ export default async function handler(req, res) {
       valid: true,
       mode: 'password',
       sessionToken: token,
-      quizId: quiz.id,
-      quizTitle: quiz.title,
-      courseName: quiz.courseName,
-      alreadySubmitted
+      ...shared
     });
   } catch (e) {
     console.error('validate-password error:', e);

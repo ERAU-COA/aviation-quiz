@@ -61,6 +61,12 @@
         .result-item.correct { border-left-color: #10b981; background: #ecfdf5; }
         .result-item.incorrect { border-left-color: #ef4444; background: #fef2f2; }
         .error { color: #dc2626; text-align: center; margin-top: 10px; min-height: 20px; }
+        .notice-strong { background: #fef2f2; border-left: 4px solid #dc2626; padding: 14px 16px; border-radius: 8px; margin-top: 16px; }
+        .notice-strong p { text-align: left; color: #7f1d1d; font-size: 14px; margin: 0; line-height: 1.5; }
+        .integrity-banner { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; font-size: 12px; font-weight: 600; padding: 8px 12px; border-radius: 6px; margin-bottom: 10px; text-align: center; line-height: 1.4; }
+        .terminated-box { background: #fef2f2; border: 1px solid #fecaca; border-left: 4px solid #dc2626; padding: 18px; border-radius: 8px; margin-bottom: 18px; }
+        .terminated-box p { text-align: left; margin: 0 0 8px 0; color: #7f1d1d; line-height: 1.5; }
+        .terminated-box p:last-child { margin-bottom: 0; }
     </style>
 </head>
 <body>
@@ -73,6 +79,28 @@
         <div class="screen" id="alreadySubmittedScreen">
             <h1>Already Submitted</h1>
             <p style="margin-bottom: 20px;">Our records show this device has already completed the quiz. If you believe this is an error, contact your instructor.</p>
+        </div>
+
+        <div class="screen" id="terminatedScreen">
+            <h1 style="color: #b91c1c;">Attempt Terminated</h1>
+            <div class="terminated-box">
+                <p><strong>Your quiz attempt was ended because you left the quiz page.</strong></p>
+                <p id="terminatedReason"></p>
+                <p id="terminatedAt" style="font-size: 13px; opacity: 0.8;"></p>
+            </div>
+            <p style="margin-bottom: 16px;">The termination has been recorded for your instructor. Refreshing or reopening this page will not restart the quiz. Contact your instructor if you believe this is a mistake.</p>
+            <button class="name-btn" id="terminatedContinueBtn" style="background: #64748b;">Enter a different quiz passcode</button>
+        </div>
+
+        <div class="screen" id="layoutBlockScreen">
+            <h1>Full Screen Required</h1>
+            <div class="terminated-box">
+                <p><strong>Split screen or multitasking is turned on.</strong></p>
+                <p>The quiz has to fill the whole screen. Close the second app or split-screen window, then tap Continue.</p>
+                <p style="font-size: 13px; opacity: 0.85;">On an iPad: drag the divider all the way to the edge, or swipe the other app away.</p>
+            </div>
+            <button class="name-btn" id="layoutRetryBtn">Continue</button>
+            <div class="error" id="layoutError"></div>
         </div>
 
         <div class="screen" id="sessionClosedScreen">
@@ -106,6 +134,9 @@
                 </ul>
                 <p style="text-align:left;margin-top:15px;font-size:14px;"><strong>Purpose:</strong> assessment and academic integrity verification.</p>
             </div>
+            <div class="notice-strong">
+                <p><strong>Stay on the quiz page.</strong> Once the quiz starts, switching tabs, changing windows, minimising the browser, opening another app, using split screen or multitasking, or leaving, refreshing or closing the page will <strong>end your attempt immediately</strong>. A terminated attempt is recorded for your instructor and cannot be restarted by refreshing or reopening this page.</p>
+            </div>
             <button class="name-btn" id="agreeBtn">I Agree &amp; Continue</button>
         </div>
 
@@ -135,6 +166,7 @@
 
         <div class="screen" id="quizScreen">
             <div id="quizTitleBanner" style="font-size: 13px; color: #1e40af; font-weight: 600; margin-bottom: 8px;"></div>
+            <div class="integrity-banner" id="integrityBanner" style="display: none;">Stay on this page &mdash; switching apps, tabs or windows, or splitting the screen, ends your attempt.</div>
             <div class="quiz-header">
                 <div id="questionCount">1/5</div>
                 <div class="timer" id="timer">5:00</div>
@@ -165,7 +197,24 @@
         const DEFAULT_QUIZ_TIME_SECONDS = 300;
         const SUBMITTED_FLAG = 'aviationQuiz.submitted';
         const DEVICE_ID_KEY = 'aviationQuiz.deviceId';
+        const TERMINATED_KEY = 'aviationQuiz.terminated';
         const STATUS_POLL_MS = 2500;
+
+        // Focus-loss policy tuning.
+        const BLUR_GRACE_MS = 400;        // ignore a blur that hands focus straight back
+        const RESIZE_SETTLE_MS = 500;     // let a resize finish before judging it
+        const RESIZE_SHRINK_RATIO = 0.88; // >12% narrower than at the start = split screen
+        const LAYOUT_FILL_RATIO = 0.9;    // a tablet viewport must fill 90% of the screen width
+
+        // Shown to the student straight away. The instructor's copy is written
+        // server-side so it cannot be forged from the browser.
+        const LOCAL_REASON_TEXT = {
+            tab_hidden: 'You left the quiz page - the tab was switched, the browser was minimised, another app was opened, or the screen was locked.',
+            window_blur: 'The quiz window lost focus - another window or application was activated.',
+            page_exit: 'The quiz page was closed, refreshed, or navigated away from.',
+            split_view: 'The quiz window was resized or put into split-screen / multitasking mode, so another app was on screen beside the quiz.',
+            unknown: 'The quiz page lost visibility or focus.'
+        };
 
         async function getAudioFingerprint() {
             try {
@@ -274,7 +323,18 @@
             timeLimitSeconds: DEFAULT_QUIZ_TIME_SECONDS,
             quizId: null,
             quizTitle: '',
-            courseName: ''
+            courseName: '',
+            focusPolicyEnabled: true,
+            terminated: false,
+            finished: false,
+            guardArmed: false,
+            guardPending: false,
+            exitIntent: false,
+            blurTimer: null,
+            resizeTimer: null,
+            baselineWidth: 0,
+            baselineOrientation: '',
+            pendingStart: null
         };
 
         function updateQuizHeaders() {
@@ -346,12 +406,16 @@
                     state.mode = data.mode;
                     state.quizStatus = data.status || 'active';
                     state.sessionToken = data.sessionToken || null;
+                    state.focusPolicyEnabled = data.focusPolicyEnabled !== false;
                     updateQuizHeaders();
-                    if (data.alreadySubmitted) {
+                    if (data.terminated) {
+                        handleServerTermination(data);
+                    } else if (data.alreadySubmitted) {
                         try { localStorage.setItem(SUBMITTED_FLAG, '1'); } catch (e) {}
                         showScreen('alreadySubmittedScreen');
                     } else {
                         try { localStorage.removeItem(SUBMITTED_FLAG); } catch (e) {}
+                        forgetTermination();
                         showScreen('nameScreen');
                         $('studentName').focus();
                     }
@@ -376,10 +440,12 @@
             const name = $('studentName').value.trim();
             if (!name) { setError('nameError', 'Please enter your name.'); return; }
             state.studentName = name;
+            if (blockedByLayout(beginQuiz)) return;
             $('beginBtn').disabled = true;
             try {
                 if (state.mode === 'sync') {
                     const status = await joinWaitingRoom(name);
+                    if (status === null) return;
                     state.quizStatus = status;
                     document.getElementById('waitingStudentName').textContent = `Checked in as: ${name}`;
                     if (status === 'active') {
@@ -389,13 +455,15 @@
                         startQuizStatusPolling();
                     }
                 } else {
-                    const r = await fetch(`${API_BASE_URL}/api/questions`, {
+                    const r = await fetch(`${API_BASE_URL}/api/questions?deviceId=${encodeURIComponent(state.deviceId)}`, {
                         headers: { Authorization: `Bearer ${state.sessionToken}` }
                     });
                     const data = await r.json();
+                    if (isTerminatedResponse(r, data)) { handleServerTermination(data); return; }
                     if (!r.ok || !data.questions) { setError('nameError', 'Failed to load questions.'); return; }
                     state.questions = data.questions;
                     state.questions.forEach(q => { state.answers[q.id] = null; });
+                    state.focusPolicyEnabled = data.focusPolicyEnabled !== false;
                     state.timerEnabled = data.timerEnabled !== false;
                     state.timeLimitSeconds = data.timeLimitSeconds || DEFAULT_QUIZ_TIME_SECONDS;
                     state.quizTitle = data.quizTitle || state.quizTitle;
@@ -406,6 +474,7 @@
                     showScreen('quizScreen');
                     renderQuestion();
                     startTimer();
+                    armFocusGuard();
                 }
             } catch (e) {
                 setError('nameError', e.message || 'Network error. Try again.');
@@ -458,7 +527,7 @@
         }
 
         async function submitQuiz() {
-            if (state.submitting) return;
+            if (state.submitting || state.terminated) return;
             state.submitting = true;
             if (state.timerInterval) clearInterval(state.timerInterval);
             $('submitBtn').disabled = true;
@@ -483,6 +552,7 @@
                     })
                 });
                 const data = await r.json();
+                if (isTerminatedResponse(r, data)) { handleServerTermination(data); return; }
                 if (!r.ok || !data.success) {
                     if (r.status === 409) {
                         try { localStorage.setItem(SUBMITTED_FLAG, '1'); } catch (e) {}
@@ -495,6 +565,9 @@
                     return;
                 }
                 try { localStorage.setItem(SUBMITTED_FLAG, '1'); } catch (e) {}
+                state.finished = true;
+                disarmFocusGuard();
+                forgetTermination();
                 showScreen('resultsScreen');
                 $('scoreDisplay').textContent = `${data.score} / ${data.totalQuestions}`;
                 const container = $('resultsContainer');
@@ -535,12 +608,19 @@
             const r = await fetch(`${API_BASE_URL}/api/join-waiting-room`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ studentName: name, deviceId: state.deviceId, quizId: state.quizId })
+                body: JSON.stringify({
+                    studentName: name,
+                    deviceId: state.deviceId,
+                    quizId: state.quizId,
+                    browserFingerprint: state.browserFingerprint
+                })
             });
             const data = await r.json();
+            if (isTerminatedResponse(r, data)) { handleServerTermination(data); return null; }
             if (!r.ok || !data.valid) {
                 throw new Error(data.message || data.error || 'Could not join waiting room');
             }
+            state.focusPolicyEnabled = data.focusPolicyEnabled !== false;
             state.sessionToken = data.sessionToken;
             state.quizTitle = data.quizTitle || state.quizTitle;
             state.courseName = data.courseName || state.courseName;
@@ -553,6 +633,11 @@
             state.statusPoll = setInterval(async () => {
                 try {
                     const data = await fetchQuizStatus();
+                    if (data.terminated) {
+                        stopQuizStatusPolling();
+                        handleServerTermination(data);
+                        return;
+                    }
                     if (state.quizId && data.quizId && data.quizId !== state.quizId) {
                         stopQuizStatusPolling();
                         document.getElementById('sessionClosedMessage').textContent = 'The instructor switched to a different quiz. Refresh the page to rejoin.';
@@ -581,14 +666,17 @@
         }
 
         async function loadQuestionsAndStart() {
+            if (blockedByLayout(loadQuestionsAndStart)) return;
             try {
-                const r = await fetch(`${API_BASE_URL}/api/questions`, {
+                const r = await fetch(`${API_BASE_URL}/api/questions?deviceId=${encodeURIComponent(state.deviceId)}`, {
                     headers: { Authorization: `Bearer ${state.sessionToken}` }
                 });
                 const data = await r.json();
+                if (isTerminatedResponse(r, data)) { handleServerTermination(data); return; }
                 if (!r.ok || !data.questions) throw new Error('Failed to load questions');
                 state.questions = data.questions;
                 state.questions.forEach(q => { state.answers[q.id] = null; });
+                state.focusPolicyEnabled = data.focusPolicyEnabled !== false;
                 state.timerEnabled = data.timerEnabled !== false;
                 state.timeLimitSeconds = data.timeLimitSeconds || DEFAULT_QUIZ_TIME_SECONDS;
                 state.quizTitle = data.quizTitle || state.quizTitle;
@@ -599,9 +687,355 @@
                 showScreen('quizScreen');
                 renderQuestion();
                 startTimer();
+                armFocusGuard();
             } catch (e) {
                 alert('Error starting quiz: ' + e.message);
             }
+        }
+
+        /* -------------------------------------------------------------------
+         * Focus-loss policy
+         *
+         * The browser only reports the violation. Enforcement lives on the
+         * server: /api/terminate-attempt records it, and questions, submit,
+         * validate-password and check-status all refuse a terminated attempt,
+         * so refreshing or reopening the page cannot restart the quiz.
+         * ----------------------------------------------------------------- */
+
+        function reasonText(reason) {
+            return LOCAL_REASON_TEXT[reason] || LOCAL_REASON_TEXT.unknown;
+        }
+
+        // Layout viewport, not visualViewport: pinch-zoom and the soft keyboard
+        // must not look like a resize.
+        function viewportWidth() {
+            return Math.round(window.innerWidth || document.documentElement.clientWidth || 0);
+        }
+
+        // Browser zoom changes innerWidth and devicePixelRatio inversely, so the
+        // physical width stays put. A real resize moves it.
+        function physicalWidth() {
+            return Math.round(viewportWidth() * (window.devicePixelRatio || 1));
+        }
+
+        function orientationKey() {
+            const type = (screen.orientation || {}).type;
+            if (type) return type.indexOf('landscape') === 0 ? 'landscape' : 'portrait';
+            if (typeof window.orientation === 'number') {
+                return Math.abs(window.orientation) === 90 ? 'landscape' : 'portrait';
+            }
+            return (screen.width || 0) > (screen.height || 0) ? 'landscape' : 'portrait';
+        }
+
+        // iPads and Android tablets only. Phones have no split view, and a
+        // windowed desktop browser is legitimate (a mid-quiz shrink still is not).
+        function isTabletDevice() {
+            const ua = navigator.userAgent || '';
+            const touch = (navigator.maxTouchPoints || 0) > 1;
+            if (/iPad/.test(ua)) return true;
+            if (/Macintosh/.test(ua) && touch) return true;   // iPadOS 13+ desktop-class UA
+            if (/Android/.test(ua) && !/Mobile/.test(ua)) return true;
+            return false;
+        }
+
+        // In Split View the page stays visible and can keep focus, so the only
+        // reliable tell is that the viewport no longer fills the screen.
+        function splitScreenLikely() {
+            if (!isTabletDevice()) return false;
+            const w = screen.width || 0;
+            const h = screen.height || 0;
+            if (!w || !h) return false;
+            const expected = orientationKey() === 'landscape' ? Math.max(w, h) : Math.min(w, h);
+            const vw = viewportWidth();
+            if (!expected || !vw) return false;
+            return vw < expected * LAYOUT_FILL_RATIO;
+        }
+
+        function isAttemptLive() {
+            return state.focusPolicyEnabled
+                && state.guardArmed
+                && !state.terminated
+                && !state.submitting
+                && !state.finished;
+        }
+
+        function captureLayoutBaseline() {
+            state.baselineOrientation = orientationKey();
+            state.baselineWidth = physicalWidth();
+        }
+
+        function armFocusGuard() {
+            $('integrityBanner').style.display = state.focusPolicyEnabled ? 'block' : 'none';
+            if (!state.focusPolicyEnabled || state.terminated) return;
+            captureLayoutBaseline();
+            if (document.hidden) {
+                // In sync mode the quiz can start while the tab is in the
+                // background. Arm as soon as the student actually looks at it.
+                state.guardPending = true;
+                state.guardArmed = false;
+                return;
+            }
+            state.guardPending = false;
+            state.guardArmed = true;
+        }
+
+        function disarmFocusGuard() {
+            state.guardArmed = false;
+            state.guardPending = false;
+            clearTimeout(state.blurTimer);
+            clearTimeout(state.resizeTimer);
+        }
+
+        function rememberTermination(info) {
+            try { localStorage.setItem(TERMINATED_KEY, JSON.stringify(info)); } catch (e) {}
+        }
+        function readTermination() {
+            try { return JSON.parse(localStorage.getItem(TERMINATED_KEY) || 'null'); } catch (e) { return null; }
+        }
+        function forgetTermination() {
+            try { localStorage.removeItem(TERMINATED_KEY); } catch (e) {}
+        }
+
+        function showTerminatedScreen(detail, at) {
+            $('terminatedReason').textContent = detail || LOCAL_REASON_TEXT.unknown;
+            let stamp = '';
+            if (at) {
+                const d = new Date(at);
+                if (!isNaN(d.getTime())) stamp = `Recorded ${d.toLocaleString()}`;
+            }
+            $('terminatedAt').textContent = stamp;
+            showScreen('terminatedScreen');
+        }
+
+        function lockDownAttempt(detail, at) {
+            state.terminated = true;
+            disarmFocusGuard();
+            if (state.timerInterval) { clearInterval(state.timerInterval); state.timerInterval = null; }
+            stopQuizStatusPolling();
+            state.questions = [];
+            state.answers = {};
+            state.currentQ = 0;
+            $('optionsContainer').innerHTML = '';
+            $('questionText').textContent = '';
+            showTerminatedScreen(detail, at);
+        }
+
+        // Two writes on purpose: sendBeacon survives the page going away,
+        // keepalive fetch survives a beacon being dropped. The endpoint is
+        // idempotent, so a double report costs nothing.
+        function sendTerminationReport(payload) {
+            const url = `${API_BASE_URL}/api/terminate-attempt`;
+            const json = JSON.stringify(payload);
+            try {
+                if (navigator.sendBeacon) {
+                    // text/plain is the only cross-origin type that never needs
+                    // a preflight, which an unloading page cannot complete.
+                    navigator.sendBeacon(url, new Blob([json], { type: 'text/plain;charset=UTF-8' }));
+                }
+            } catch (e) {}
+            try {
+                fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: json,
+                    keepalive: true
+                }).catch(() => {});
+            } catch (e) {}
+        }
+
+        function triggerTermination(reason, eventType) {
+            if (!isAttemptLive()) return;
+            const finalReason = (state.exitIntent && reason === 'tab_hidden') ? 'page_exit' : reason;
+            state.terminated = true;
+            disarmFocusGuard();
+
+            const answered = Object.keys(state.answers)
+                .filter(k => state.answers[k] !== null && state.answers[k] !== undefined).length;
+
+            sendTerminationReport({
+                sessionToken: state.sessionToken,
+                deviceId: state.deviceId,
+                studentName: state.studentName,
+                browserFingerprint: state.browserFingerprint,
+                reason: finalReason,
+                eventType,
+                answeredCount: answered,
+                questionsTotal: state.questions.length,
+                elapsedSeconds: state.startTime ? Math.floor((Date.now() - state.startTime) / 1000) : 0
+            });
+
+            const at = new Date().toISOString();
+            rememberTermination({ quizId: state.quizId, reason: finalReason, detail: reasonText(finalReason), at });
+            lockDownAttempt(reasonText(finalReason), at);
+        }
+
+        // A termination the server reported back to us (403 attempt_terminated,
+        // or a flag on validate-password / check-status).
+        function handleServerTermination(data) {
+            const detail = (data && data.terminationDetail) || LOCAL_REASON_TEXT.unknown;
+            const at = (data && data.terminatedAt) || new Date().toISOString();
+            if (state.quizId) {
+                rememberTermination({
+                    quizId: state.quizId,
+                    reason: (data && data.terminationReason) || 'unknown',
+                    detail,
+                    at
+                });
+            }
+            lockDownAttempt(detail, at);
+        }
+
+        function isTerminatedResponse(r, data) {
+            return r.status === 403 && data && data.error === 'attempt_terminated';
+        }
+
+        function showLayoutBlock(startFn) {
+            state.pendingStart = startFn;
+            setError('layoutError', '');
+            showScreen('layoutBlockScreen');
+        }
+
+        // Returns true when the start was blocked and queued for retry.
+        function blockedByLayout(startFn) {
+            if (!state.focusPolicyEnabled || !splitScreenLikely()) return false;
+            showLayoutBlock(startFn);
+            return true;
+        }
+
+        function retryPendingStart() {
+            if (splitScreenLikely()) {
+                setError('layoutError', 'Split screen is still on. Close the other app, then tap Continue.');
+                return;
+            }
+            const fn = state.pendingStart;
+            state.pendingStart = null;
+            setError('layoutError', '');
+            if (fn) fn();
+        }
+
+        function handleViewportChange() {
+            clearTimeout(state.resizeTimer);
+            state.resizeTimer = setTimeout(() => {
+                // Waiting on the layout block: let them straight in once it is fixed.
+                if (state.pendingStart && !state.terminated) {
+                    if (!splitScreenLikely()) retryPendingStart();
+                    return;
+                }
+                if (!isAttemptLive()) return;
+
+                const orientation = orientationKey();
+                const rotated = orientation !== state.baselineOrientation;
+                if (rotated) {
+                    // Rotating the device is not a violation.
+                    captureLayoutBaseline();
+                }
+                if (splitScreenLikely()) { triggerTermination('split_view', 'resize'); return; }
+                if (!rotated && state.baselineWidth && physicalWidth() < state.baselineWidth * RESIZE_SHRINK_RATIO) {
+                    triggerTermination('split_view', 'resize');
+                }
+            }, RESIZE_SETTLE_MS);
+        }
+
+        function installFocusGuard() {
+            document.addEventListener('visibilitychange', () => {
+                if (document.hidden) {
+                    triggerTermination('tab_hidden', 'visibilitychange');
+                    return;
+                }
+                if (state.guardPending && !state.terminated) {
+                    state.guardPending = false;
+                    captureLayoutBaseline();
+                    state.guardArmed = true;
+                }
+            });
+
+            window.addEventListener('blur', () => {
+                if (!isAttemptLive()) return;
+                clearTimeout(state.blurTimer);
+                state.blurTimer = setTimeout(() => {
+                    if (!isAttemptLive()) return;
+                    if (document.hasFocus && document.hasFocus()) return;
+                    triggerTermination('window_blur', 'blur');
+                }, BLUR_GRACE_MS);
+            });
+
+            window.addEventListener('focus', () => { clearTimeout(state.blurTimer); });
+
+            // Fires before visibilitychange on a reload or navigation, so the
+            // recorded reason says "closed or refreshed" rather than "tab hidden".
+            window.addEventListener('beforeunload', () => {
+                if (isAttemptLive()) state.exitIntent = true;
+            });
+            window.addEventListener('pagehide', () => triggerTermination('page_exit', 'pagehide'));
+
+            window.addEventListener('resize', handleViewportChange);
+            window.addEventListener('orientationchange', handleViewportChange);
+        }
+
+        // Leaves the terminated screen so a student can still sit a different
+        // quiz. The one they were terminated on stays blocked by the server.
+        function resetForNewQuiz() {
+            forgetTermination();
+            disarmFocusGuard();
+            stopQuizStatusPolling();
+            state.password = '';
+            state.sessionToken = null;
+            state.quizId = null;
+            state.quizTitle = '';
+            state.courseName = '';
+            state.questions = [];
+            state.answers = {};
+            state.currentQ = 0;
+            state.startTime = null;
+            state.submitting = false;
+            state.finished = false;
+            state.terminated = false;
+            state.exitIntent = false;
+            state.pendingStart = null;
+            state.mode = 'password';
+            state.quizStatus = 'inactive';
+            $('submitBtn').disabled = false;
+            $('beginBtn').disabled = false;
+            setError('passwordError', '');
+            renderPassword();
+            updateQuizHeaders();
+            showScreen('consentScreen');
+        }
+
+        // A terminated attempt survives a refresh or a reopen. The local record
+        // is only for an instant answer; the server is what actually enforces it.
+        const TERMINATION_MEMORY_MS = 6 * 60 * 60 * 1000;
+
+        async function restoreTerminationState() {
+            const saved = readTermination();
+            if (!saved || !saved.quizId) return false;
+            const savedAt = Date.parse(saved.at || '');
+            if (isNaN(savedAt) || Date.now() - savedAt > TERMINATION_MEMORY_MS) {
+                // Older than a session token can live. The server still blocks
+                // that quiz; no reason to greet a new visit with this screen.
+                forgetTermination();
+                return false;
+            }
+            state.quizId = saved.quizId;
+            state.terminated = true;
+            showTerminatedScreen(saved.detail, saved.at);
+            try {
+                const params = new URLSearchParams({ deviceId: state.deviceId, quizId: String(saved.quizId) });
+                const r = await fetch(`${API_BASE_URL}/api/check-status?${params}`);
+                const data = await r.json();
+                if (r.ok && data && data.terminated === false) {
+                    // Instructor allowed a retake.
+                    forgetTermination();
+                    state.terminated = false;
+                    state.quizId = null;
+                    showScreen('consentScreen');
+                    return false;
+                }
+                if (r.ok && data && data.terminated) {
+                    showTerminatedScreen(data.terminationDetail, data.terminatedAt);
+                }
+            } catch (e) {}
+            return true;
         }
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -612,6 +1046,10 @@
             $('nextBtn').onclick = () => { state.currentQ++; renderQuestion(); };
             $('submitBtn').onclick = submitQuiz;
             $('studentName').addEventListener('keydown', e => { if (e.key === 'Enter') beginQuiz(); });
+            $('layoutRetryBtn').onclick = retryPendingStart;
+            $('terminatedContinueBtn').onclick = resetForNewQuiz;
+            installFocusGuard();
+            restoreTerminationState();
         });
     </script>
 </body>

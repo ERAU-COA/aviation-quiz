@@ -1,5 +1,13 @@
 import jwt from 'jsonwebtoken';
-import { getSupabase, getClientIp, applyCors } from './_lib.js';
+import {
+  getSupabase,
+  getClientIp,
+  applyCors,
+  findQuizById,
+  findActiveTermination,
+  terminationPayload,
+  DEVICE_ID_PATTERN
+} from './_lib.js';
 
 export default async function handler(req, res) {
   if (applyCors(req, res)) return;
@@ -20,15 +28,27 @@ export default async function handler(req, res) {
   const supabase = getSupabase();
   const ip = getClientIp(req);
 
+  // Prefer the device bound into the signed token; fall back to the query only
+  // for sessions issued before the token carried one.
+  const queryDeviceId = req.query?.deviceId;
+  const deviceId = decoded?.deviceId
+    || (queryDeviceId && DEVICE_ID_PATTERN.test(queryDeviceId) ? queryDeviceId : null);
+
   try {
-    const { data: quiz } = await supabase
-      .from('quizzes')
-      .select('time_limit_minutes, timer_enabled, title, mode, status, courses(name)')
-      .eq('id', quizId)
-      .single();
+    const quiz = await findQuizById(supabase, quizId);
     if (quiz?.mode === 'sync' && quiz?.status !== 'active') {
       return res.status(403).json({ error: 'session_not_active', message: 'The instructor has not started this quiz yet.' });
     }
+
+    const termination = await findActiveTermination(supabase, quizId, { deviceId });
+    if (termination) {
+      return res.status(403).json({
+        error: 'attempt_terminated',
+        message: 'Your attempt at this quiz was terminated. Contact your instructor.',
+        ...terminationPayload(termination)
+      });
+    }
+
     const { data: questions, error } = await supabase
       .from('questions')
       .select('id, question_text, option_a, option_b, option_c, option_d')
@@ -47,9 +67,10 @@ export default async function handler(req, res) {
       questions,
       totalQuestions: questions.length,
       quizTitle: quiz?.title,
-      courseName: quiz?.courses?.name || null,
+      courseName: quiz?.courseName || null,
       timerEnabled: quiz?.timer_enabled !== false,
-      timeLimitSeconds: Math.max(60, Math.floor((quiz?.time_limit_minutes ?? 5) * 60))
+      timeLimitSeconds: Math.max(60, Math.floor((quiz?.time_limit_minutes ?? 5) * 60)),
+      focusPolicyEnabled: quiz?.focus_policy_enabled !== false
     });
   } catch (e) {
     console.error('questions error:', e);

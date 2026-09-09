@@ -1,6 +1,11 @@
-import { getSupabase, applyCors, findQuizById } from './_lib.js';
-
-const DEVICE_ID_PATTERN = /^[a-f0-9-]{8,64}$/i;
+import {
+  getSupabase,
+  applyCors,
+  findQuizById,
+  findActiveTermination,
+  terminationPayload,
+  DEVICE_ID_PATTERN
+} from './_lib.js';
 
 export default async function handler(req, res) {
   if (applyCors(req, res)) return;
@@ -14,17 +19,23 @@ export default async function handler(req, res) {
     const quiz = await findQuizById(supabase, quizId);
     if (!quiz) return res.status(404).json({ error: 'Quiz not found' });
 
-    let alreadySubmitted = false;
     const deviceId = req.query?.deviceId;
-    if (deviceId && DEVICE_ID_PATTERN.test(deviceId)) {
+    const validDeviceId = deviceId && DEVICE_ID_PATTERN.test(deviceId) ? deviceId : null;
+
+    let alreadySubmitted = false;
+    if (validDeviceId) {
       const { count, error } = await supabase
         .from('submissions')
         .select('id', { count: 'exact', head: true })
         .eq('quiz_id', quizId)
-        .eq('device_id', deviceId);
+        .eq('device_id', validDeviceId);
       if (error) throw error;
       alreadySubmitted = (count ?? 0) > 0;
     }
+
+    const termination = validDeviceId
+      ? await findActiveTermination(supabase, quizId, { deviceId: validDeviceId })
+      : null;
 
     return res.status(200).json({
       alreadySubmitted,
@@ -32,7 +43,9 @@ export default async function handler(req, res) {
       status: quiz.status,
       quizId: quiz.id,
       quizTitle: quiz.title,
-      courseName: quiz.courseName
+      courseName: quiz.courseName,
+      focusPolicyEnabled: quiz.focus_policy_enabled !== false,
+      ...terminationPayload(termination)
     });
   } catch (e) {
     console.error('check-status error:', e);
